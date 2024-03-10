@@ -19,18 +19,29 @@ int get_abonent_len(abonent *abonent_list) {
   return len;
 }
 
+void buff_clean(){
+  while(getchar() != '\n');
+}
+
 int add_abonent(abonent *abonent_list) {
-  int abonent_len = get_abonent_len(abonent_list);
-  if (abonent_len > 100) {
+  int len = get_abonent_len(abonent_list);
+  if (len > 100) {
     printf("Abonent list overflow");
     return FAIL;
   }
   printf("Enter name:\n");
-  scanf("%9s", abonent_list[abonent_len].name);
+  buff_clean();
+  scanf("%9s", abonent_list[len].name);
+
   printf("Enter second_name:\n");
-  scanf("%9s", abonent_list[abonent_len].second_name);
+  buff_clean();
+  scanf("%9s", abonent_list[len].second_name);
+
   printf("Enter tel:\n");
-  scanf("%9s", abonent_list[abonent_len].tel);
+  buff_clean();
+  scanf("%9s", abonent_list[len].tel);
+
+  buff_clean();
 
   return SUCCESS;
 }
@@ -73,7 +84,7 @@ int search_abonent(abonent *abonent_list) {
                 "  name: %s\n"
                 "  second: %s\n"
                 "  tel: %s\n",
-                i, abonent_list[i].name, abonent_list[i].second_name,
+                i+1, abonent_list[i].name, abonent_list[i].second_name,
                 abonent_list[i].tel);
           }
         } else
@@ -100,7 +111,7 @@ void print_all_abonents(abonent *abonent_list) {
 }
 
 int menu() {
-  int option = 0, err = 0;
+  int option = 0, err;
   printf(
       "1) Add abonent\n"
       "2) Delete abonent\n"
@@ -109,8 +120,7 @@ int menu() {
       "5) Exit\n");
   err = scanf("%d", &option);
   if (err != 1) {
-    for (int ch = 0; (ch = getchar()) != '\n' && ch != EOF;)
-      ;
+    buff_clean();
     option = 0;
   }
   return option;
