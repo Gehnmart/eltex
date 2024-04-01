@@ -9,18 +9,6 @@ int main() {
       err = OUTPUT_ERROR;
     }
   }
-  if (err != SUCCESS) {
-    if (err & INPUT_ERROR) {
-      fprintf(stderr, "error: incorrect input, please enter only numbers");
-    } else if (err & OUTPUT_ERROR) {
-      fprintf(
-          stderr,
-          "error: incorrect output, please check your system and try again");
-    } else {
-      fprintf(stderr, "error: unknown error");
-    }
-  }
-  printf("\n");
 
-  return 0;
+  return ErrorHandler(err);
 }

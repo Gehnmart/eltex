@@ -20,6 +20,7 @@
 #define PrintBit(number) FPrintBit(stdout, number, 0, ' ', '\n')
 #define PrintBitWithInterval(number, interval)                                     \
   FPrintBit(stdout, number, interval, ' ', '\n')
+#define PutchInterval(interval) FPutchInterval(stdout, interval)
 #define InputNegativeNumber(number)                                            \
   FInputNumber(stdin, number, TYPE_ONLY_NEGATIVE_NUMBER)
 #define InputPositiveNumber(number)                                            \
@@ -29,6 +30,7 @@
 char FInputNumber(FILE *stream, int *number, char type);
 char FPrintBit(FILE *stream, int number, int offset, char space_symbol,
                char end_symbol);
+char FPutchInterval(FILE *stream, char interval);
 char SetByteInNumber(int *number, char byte, char byte_number);
 int CounterOfBits(int number);
 int ErrorHandler(char err);

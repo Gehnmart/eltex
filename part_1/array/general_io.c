@@ -40,6 +40,18 @@ char FPrintBit(FILE *stream, int number, int offset, char space_symbol,
   return err;
 }
 
+char FPutchInterval(FILE *stream, char interval) {
+  char err = 0;
+  for (char k = 0; k < interval; ++k) {
+    if (putchar(' ') < 0) {
+      err |= OUTPUT_ERROR;
+      break;
+    }
+  }
+
+  return err;
+}
+
 char SetByteInNumber(int *number, char byte, char byte_number) {
   char err = SUCCESS;
   if (byte_number >= sizeof(*number)) {
