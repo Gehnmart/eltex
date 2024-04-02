@@ -1,5 +1,7 @@
 .PHONY: all run_all clean
 
+BUILD_DIR := ./build
+
 all: exc1 exc2 exc3 exc4
 
 exc1: exc_1.o general_io.o general_utils.o
