@@ -1,6 +1,9 @@
 #ifndef ARRAYS_GENERAL_UTILS_H
 #define ARRAYS_GENERAL_UTILS_H
 
-unsigned GetNumberLength(unsigned number);
+#include <stdio.h>
+#include <stdlib.h>
 
-#endif // ARRAYS_GENERAL_UTILS_H
+int GetNumberLength(int number);
+
+#endif  // ARRAYS_GENERAL_UTILS_H

@@ -1,73 +1,53 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "general_io.h"
 #include "general_utils.h"
 
-#define FILL_MATRIX_LINE_BY_LINE 0
-#define FILL_MATRIX_SNAIL 0x1
-
-char FillSquareMatrix(unsigned N, char fill_type) {
+char PrintSquareMatrixSnail(unsigned N) {
   char err = 0;
-  char matrix[N][N];
-  int min_y = 0, min_x = 0;
-  int max_y = N - 1, max_x = N - 1;
-
+  int matrix[N][N];
+  memset(matrix, 0, sizeof(matrix));
 
   int counter = 0;
-  
-  int y = 0;
-  int x = 0;
-  for(int i = 0; i < N; i++) {
-    for (; x < max_x && counter <= N*N; ++x) {
-      matrix[min_y][x] = ++counter;
 
+  char dy[] = {0, 1, 0, -1}; // direction y
+  char dx[] = {1, 0, -1, 0}; // direction x
+  char dir = 1;              // current direction
+
+  int next_row = 0;
+  int next_col = 0;
+  for (int i = 0; i < N * N + 1; i++) {
+
+    if (matrix[next_row][next_col] != 0 || next_row < 0 || next_row >= N ||
+        next_col < 0 || next_col >= N) {
+      next_row -= dy[dir - 1];
+      next_col -= dx[dir - 1];
+      dir = dir % 4 + 1;
+    } else {
+      matrix[next_row][next_col] = ++counter;
     }
-    ++min_y;
-    --x;
-    ++y;
-    for (; y <= max_y && counter <= N*N; ++y) {
-      matrix[y][max_x] = ++counter;
-    }
-    --max_x;
-    --y;
-    --x;
-    for (; x >= min_x && counter <= N*N; --x) {
-      matrix[max_y][x] = ++counter;
-    }
-    --max_y;
-    x++;
-    y--;
-    for (; y >= min_y && counter <= N*N; --y) {
-      matrix[y][min_x] = ++counter;
-    }
-    ++min_x;
-    x++;
-    y++;
+
+    next_row += dy[dir - 1];
+    next_col += dx[dir - 1];
   }
 
-  for(int i = 0; i < N; i++){
-    for(int j = 0; j < N; j++){
-      printf("%d ", matrix[i][j]);
-      char interval = GetNumberLength(N * N) - GetNumberLength(matrix[i][j]) + 1;
-      FPutchInterval(stdout, interval);
-    }
-    printf("\n");
-  }
+  PrintMatrix(N, N, matrix);
 
   return err;
 }
 
-int main() {
-  // int Number = 0;
-  // char err = InputPositiveNumber(&Number);
-  // char interval = GetNumberLength(N * N) - GetNumberLength(i) + 1;
-      // PutSpaces(interval);
+void PrintSquareMatrixLineByLine(unsigned N) {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N; j++) {
+      printf("%d ", i * N + j + 1);
+    }
+  }
+}
 
-      // if (i % N == 0) {
-      //   putchar('\n');
-      // }
-  FillSquareMatrix(2, FILL_MATRIX_SNAIL);
+int main() {
+  PrintSquareMatrixSnail(10);
   printf("\n");
 
   return 0;
