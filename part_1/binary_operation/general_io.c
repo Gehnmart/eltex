@@ -20,7 +20,7 @@ char FInputNumber(FILE *stream, int *number, char type) {
   return err;
 }
 
-char FPrintBit(FILE *stream, int number, int offset, char space_symbol,
+char FPrintBit(FILE *stream, int number, int interval, char space_symbol,
                char end_symbol) {
   char err = SUCCESS;
 
@@ -29,8 +29,8 @@ char FPrintBit(FILE *stream, int number, int offset, char space_symbol,
       err |= OUTPUT_ERROR;
       break;
     }
-    if (offset != 0) {
-      if (i % offset == 0) {
+    if (interval != 0) {
+      if (i % interval == 0) {
         putc(space_symbol, stream);
       }
     }
@@ -40,14 +40,39 @@ char FPrintBit(FILE *stream, int number, int offset, char space_symbol,
   return err;
 }
 
+char FPutchInterval(FILE *stream, char interval) {
+  char err = 0;
+  for (char k = 0; k < interval; ++k) {
+    if (putc(' ', stream) < 0) {
+      err |= OUTPUT_ERROR;
+      break;
+    }
+  }
+
+  return err;
+}
+
+void FPrintMatrix(FILE *stream, int rows, int columns, int matrix[][columns]) {
+  for (int i = 0; i < rows; i++) {
+    for (int j = 0; j < columns; j++) {
+      printf("%d ", matrix[i][j]);
+      char interval =
+          GetNumberLength(rows * columns) - GetNumberLength(matrix[i][j]) + 1;
+      FPutchInterval(stream, interval);
+    }
+    printf("\n");
+  }
+}
+
 char SetByteInNumber(int *number, char byte, char byte_number) {
   char err = SUCCESS;
-  if (byte_number >= sizeof(*number)) {
+  if (byte_number >= (char)sizeof(*number)) {
     err |= OVERFLOW_ERROR;
+  } else {
+    char *ptr = (char *)number;
+    ptr += byte_number;
+    *ptr = byte;
   }
-  char *ptr = (char *)number;
-  ptr += byte_number;
-  *ptr = byte;
 
   return err;
 }
@@ -62,32 +87,36 @@ int CounterOfBits(int number) {
   return counter;
 }
 
-int ErrorHandler(char err){
+int ErrorHandler(char err) {
   int error_count = 0;
   if (err != SUCCESS) {
     if (err & INPUT_ERROR) {
       ++error_count;
       fprintf(stderr, "error: incorrect input, please enter only numbers");
-    } if (err & NEGATIVE_NUMBER_ERROR) {
+    }
+    if (err & NEGATIVE_NUMBER_ERROR) {
       ++error_count;
       fprintf(
           stderr,
           "error: incorrect number, is negative, please enter positive number");
-    } if (err & POSITIVE_NUMBER_ERROR) {
+    }
+    if (err & POSITIVE_NUMBER_ERROR) {
       ++error_count;
       fprintf(
           stderr,
           "error: incorrect number, is positive, please enter negative number");
-    } if (err & OUTPUT_ERROR) {
+    }
+    if (err & OUTPUT_ERROR) {
       ++error_count;
       fprintf(
           stderr,
           "error: incorrect output, please check your system and try again");
-    } if (err & UNKNOWN_ERROR) {
+    }
+    if (err & UNKNOWN_ERROR) {
       ++error_count;
       fprintf(stderr, "error: unknown error");
     }
   }
-  
+
   return error_count;
 }
