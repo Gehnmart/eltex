@@ -12,14 +12,13 @@ char PrintSquareMatrixSnail(int N) {
 
   int counter = 0;
 
-  char dy[] = {0, 1, 0, -1}; // direction y
-  char dx[] = {1, 0, -1, 0}; // direction x
-  char dir = 1;              // current direction
+  char dy[] = {0, 1, 0, -1};  // direction y
+  char dx[] = {1, 0, -1, 0};  // direction x
+  char dir = 1;               // current direction
 
   int next_row = 0;
   int next_col = 0;
   for (int i = 0; i < N * N + 1; i++) {
-
     if (matrix[next_row][next_col] != 0 || next_row < 0 || next_row >= N ||
         next_col < 0 || next_col >= N) {
       next_row -= dy[dir - 1];
