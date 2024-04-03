@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "general_utils.h": "c"
+        "general_utils.h": "c",
+        "stdint.h": "c"
     }
 }
