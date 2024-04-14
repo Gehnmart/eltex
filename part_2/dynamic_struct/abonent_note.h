@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "additional.h"
+
 #define BUFF_MAX 10
 #define ABONENT_MAX 100
 #define SUCCESS 1

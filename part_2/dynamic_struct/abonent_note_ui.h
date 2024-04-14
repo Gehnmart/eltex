@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#include "additional.h"
+
 enum MenuOptions {
   ADD_ABONENT = 1,
   DELETE_ABONENT,

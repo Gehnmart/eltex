@@ -52,11 +52,6 @@ abonent_control_t *DeleteAbonentInList(abonent_control_t *abonent_control,
   return abonent_control;
 }
 
-static void BuffClean() {
-  while (getchar() != '\n')
-    ;
-}
-
 int AddAbonent(abonent_control_t *abonent_control) {
   if (abonent_control->len > 100) {
     printf("Abonent list overflow");
@@ -66,16 +61,23 @@ int AddAbonent(abonent_control_t *abonent_control) {
 
   printf("Enter name:\n");
   BuffClean();
-  scanf("%9s", abonent_control->abonent_list[abonent_control->len - 1].name);
+  InputWrap(scanf("%9s",
+                  abonent_control->abonent_list[abonent_control->len - 1].name),
+            1);
 
   printf("Enter second_name:\n");
   BuffClean();
-  scanf("%9s",
-        abonent_control->abonent_list[abonent_control->len - 1].second_name);
+  InputWrap(
+      scanf(
+          "%9s",
+          abonent_control->abonent_list[abonent_control->len - 1].second_name),
+      1);
 
   printf("Enter tel:\n");
   BuffClean();
-  scanf("%9s", abonent_control->abonent_list[abonent_control->len - 1].tel);
+  InputWrap(
+      scanf("%9s", abonent_control->abonent_list[abonent_control->len - 1].tel),
+      1);
 
   BuffClean();
 
@@ -85,7 +87,7 @@ int AddAbonent(abonent_control_t *abonent_control) {
 int DeleteAbonent(abonent_control_t *abonent_control) {
   char search_name[BUFF_MAX];
   printf("Enter name for delete abonent:\n");
-  scanf("%9s", search_name);
+  InputWrap(scanf("%9s", search_name), 1);
 
   for (int i = 0; i < abonent_control->len; i++) {
     if (abonent_control->abonent_list[i].name[0] != 0) {
@@ -106,7 +108,7 @@ int DeleteAbonent(abonent_control_t *abonent_control) {
 int SearchAbonent(abonent_control_t *abonent_control) {
   char search_name[BUFF_MAX];
   printf("Enter name for search abonent:\n");
-  scanf("%9s", search_name);
+  InputWrap(scanf("%9s", search_name), 1);
 
   for (int i = 0; i < abonent_control->len; i++) {
     if (abonent_control->abonent_list[i].name[0] != 0) {
