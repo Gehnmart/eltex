@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+#include "abonent_note.h"
 #include "additional.h"
 
 enum MenuOptions {
@@ -13,6 +14,6 @@ enum MenuOptions {
   EXIT
 };
 
-int AbonentNoteUi();
+int AbonentNoteUi(abonent_control_t *abonent_control);
 
 #endif  // DYNAMIC_STRUCT_ABONENT_NOTE_UI_H

@@ -3,6 +3,7 @@
 void InitAbonentList(abonent_control_t *abonent_control) {
   abonent_t *abonent_list = calloc(1, sizeof(abonent_t));
   if (abonent_list == NULL) {
+    DestroyAbonentList(abonent_control);
     perror("Out of memory");
     exit(EXIT_FAILURE);
   }
@@ -19,11 +20,21 @@ void DestroyAbonentList(abonent_control_t *abonent_control) {
   }
 }
 
+void ErrorHandler(abonent_control_t *abonent_control, int received,
+                  int expected) {
+  if (received != expected) {
+    DestroyAbonentList(abonent_control);
+    fprintf(stderr, "error: input error");
+    exit(EXIT_FAILURE);
+  }
+}
+
 abonent_control_t *AddAbonentInList(abonent_control_t *abonent_control,
                                     int next_len) {
   abonent_t *new_abonent_list =
       realloc(abonent_control->abonent_list, sizeof(abonent_t) * next_len);
   if (new_abonent_list == NULL) {
+    DestroyAbonentList(abonent_control);
     perror("Out of memory");
     exit(EXIT_FAILURE);
   }
@@ -44,7 +55,8 @@ abonent_control_t *DeleteAbonentInList(abonent_control_t *abonent_control,
   abonent_t *new_abonent_list = realloc(
       abonent_control->abonent_list, abonent_control->len * sizeof(abonent_t));
   if (new_abonent_list == NULL) {
-    perror("Out of memory\n");
+    DestroyAbonentList(abonent_control);
+    perror("Out of memory");
     exit(EXIT_FAILURE);
   }
   abonent_control->abonent_list = new_abonent_list;
@@ -61,13 +73,16 @@ int AddAbonent(abonent_control_t *abonent_control) {
 
   printf("Enter name:\n");
   BuffClean();
-  InputWrap(scanf("%9s",
-                  abonent_control->abonent_list[abonent_control->len - 1].name),
-            1);
+  ErrorHandler(
+      abonent_control,
+      scanf("%9s",
+            abonent_control->abonent_list[abonent_control->len - 1].name),
+      1);
 
   printf("Enter second_name:\n");
   BuffClean();
-  InputWrap(
+  ErrorHandler(
+      abonent_control,
       scanf(
           "%9s",
           abonent_control->abonent_list[abonent_control->len - 1].second_name),
@@ -75,7 +90,8 @@ int AddAbonent(abonent_control_t *abonent_control) {
 
   printf("Enter tel:\n");
   BuffClean();
-  InputWrap(
+  ErrorHandler(
+      abonent_control,
       scanf("%9s", abonent_control->abonent_list[abonent_control->len - 1].tel),
       1);
 
@@ -87,7 +103,7 @@ int AddAbonent(abonent_control_t *abonent_control) {
 int DeleteAbonent(abonent_control_t *abonent_control) {
   char search_name[BUFF_MAX];
   printf("Enter name for delete abonent:\n");
-  InputWrap(scanf("%9s", search_name), 1);
+  ErrorHandler(abonent_control, scanf("%9s", search_name), 1);
 
   for (int i = 0; i < abonent_control->len; i++) {
     if (abonent_control->abonent_list[i].name[0] != 0) {
@@ -108,7 +124,7 @@ int DeleteAbonent(abonent_control_t *abonent_control) {
 int SearchAbonent(abonent_control_t *abonent_control) {
   char search_name[BUFF_MAX];
   printf("Enter name for search abonent:\n");
-  InputWrap(scanf("%9s", search_name), 1);
+  ErrorHandler(abonent_control, scanf("%9s", search_name), 1);
 
   for (int i = 0; i < abonent_control->len; i++) {
     if (abonent_control->abonent_list[i].name[0] != 0) {

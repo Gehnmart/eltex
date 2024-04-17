@@ -25,8 +25,10 @@ typedef struct {
   abonent_t *abonent_list;
 } abonent_control_t;
 
-void InitAbonentList(abonent_control_t *abonent_list_control);
-void DestroyAbonentList(abonent_control_t *abonent_list_control);
-int PerformAction(int option, abonent_control_t *abonent_list_control);
+void InitAbonentList(abonent_control_t *abonent_control);
+void DestroyAbonentList(abonent_control_t *abonent_control);
+void ErrorHandler(abonent_control_t *abonent_control, int received,
+                  int expected);
+int PerformAction(int option, abonent_control_t *abonent_control);
 
 #endif  // DYNAMIC_STRUCT_ABONENT_NOTE_H
