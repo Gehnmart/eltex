@@ -3,7 +3,7 @@
 static void PrintAllLibAndFunc(lib_controller_t *controller) {
   for (int i = 0; i < controller->size; i++) {
     printf("%d) %s\n", i, controller->libs[i].name);
-    for (int j = 0; j < controller->libs->size; j++) {
+    for (int j = 0; j < controller->libs[i].size; j++) {
       printf("  %d) %s\n", j, controller->libs[i].func[j].name);
     }
   }
@@ -22,10 +22,10 @@ static void PrintAllFuncInLib(lib_t *lib) {
 }
 
 static void InputWrap(int received, int expected,
-                      lib_controller_t *destroyed_obj) {
+                      lib_controller_t *controller) {
   if (received != expected) {
     fprintf(stderr, "error: incorrected input\n");
-    DestroyController(destroyed_obj);
+    DestroyController(controller);
     exit(EXIT_FAILURE);
   }
 }
