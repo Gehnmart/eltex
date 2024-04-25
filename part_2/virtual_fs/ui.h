@@ -15,10 +15,14 @@
 #include <sys/types.h>
 #include <termios.h>
 
-#define MAX_WINDOW_COUNT 6
+#include "fs.h"
+
+#define MAX_WINDOW_COUNT 8
 
 #define C_UP 1
 #define C_DOWN 2
+
+#define MIN(a, b) (a > b ? b : a)
 
 typedef struct {
   char absolute_path[PATH_MAX];
@@ -33,8 +37,9 @@ typedef struct {
 } window_t;
 
 typedef struct {
-  window_t windows[MAX_WINDOW_COUNT];
+  window_t *windows;
   int current_window;
+  int size;
 } win_controller_t;
 
 void Run();
