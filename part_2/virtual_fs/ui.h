@@ -14,10 +14,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <termios.h>
+#include <unistd.h>
 
 #include "fs.h"
 
 #define MAX_WINDOW_COUNT 8
+#define MIN_WINDOW_COUNT 1
 
 #define C_UP 1
 #define C_DOWN 2
