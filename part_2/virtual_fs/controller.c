@@ -1,25 +1,44 @@
 #include "controller.h"
 
+/**
+ * @brief Retrieves a pointer to the global WindowController instance
+ * @return Address of the global WindowController pointer
+ */
 WindowController **GetGlobalController() {
   static WindowController *controller = NULL;
   return &controller;
 }
 
+/**
+ * @brief Initializes the global WindowController with a given controller
+ *        if it is not already initialized, otherwise exits with failure
+ * @param controller - Pointer to WindowController to set as the global instance
+ */
 void InitGlobalController(WindowController *controller) {
   WindowController **temp = GetGlobalController();
   if (*temp == NULL) {
     *temp = controller;
   } else {
+    endwin();
     exit(EXIT_FAILURE);
   }
 }
 
+/**
+ * @brief Frees the memory allocated for the directory list within a DirectoryContext
+ * @param dir_context - Pointer to DirectoryContext containing the directory list to free
+ */
 void FreeDirList(DirectoryContext *win_context) {
   if (win_context->dir_list != NULL) {
     free(win_context->dir_list);
   }
 }
 
+/**
+ * @brief Frees the memory for a WindowContext, including its associated window
+ *        and directory list
+ * @param win_context - Pointer to WindowContext to be freed
+ */
 void FreeWindow(WindowContext *win_context) {
   if (win_context != NULL) {
     delwin(win_context->window);
@@ -27,6 +46,10 @@ void FreeWindow(WindowContext *win_context) {
   FreeDirList(&win_context->dir_context);
 }
 
+/**
+ * @brief Frees the memory for a WindowController, including all its WindowContexts
+ * @param controller - Pointer to WindowController to be freed
+ */
 void FreeController(WindowController *controller) {
   for (int i = 0; i < controller->win_list_size; i++) {
     FreeWindow(&controller->win_list[i]);
@@ -36,6 +59,11 @@ void FreeController(WindowController *controller) {
   }
 }
 
+/**
+ * @brief Exits the program after freeing the global WindowController and
+ *        terminating the ncurses window
+ * @param exit_type - Exit status code
+ */
 void SuccessfulExit(int exit_type) {
   WindowController **controller = GetGlobalController();
 
@@ -44,6 +72,10 @@ void SuccessfulExit(int exit_type) {
   exit(exit_type);
 }
 
+/**
+ * @brief Allocates memory for the window list in the controller
+ * @param controller - Pointer to WindowController whose window list needs allocation
+ */
 void ControllerMalloc(WindowController *controller) {
   if (controller->win_list_size > 0) {
     WindowContext *temp =
@@ -56,6 +88,12 @@ void ControllerMalloc(WindowController *controller) {
   }
 }
 
+/**
+ * @brief Initializes a window in the controller at a given index
+ * @param controller - Pointer to WindowController containing the window to initialize
+ * @param index - Index of the window to initialize
+ * @param size - Number of windows to split the screen into
+ */
 void InitWindow(WindowController *controller, int index, int size) {
   WindowContext *window = &controller->win_list[index];
   window->window = newwin(LINES, COLS / size, 0, COLS / size * index);
@@ -70,6 +108,12 @@ void InitWindow(WindowController *controller, int index, int size) {
   InitDirOnWindow(&(window->dir_context), ".");
 }
 
+/**
+ * @brief Reallocates the window list of the controller to a new size
+ * @param controller - Pointer to WindowController whose window list is to be reallocated
+ * @param next_size - New size for the window list
+ * @return Pointer to the newly allocated WindowContext array
+ */
 WindowContext *WinRealloc(WindowController *controller, int next_size) {
   WindowContext *new_windows =
       realloc(controller->win_list, sizeof(WindowContext) * next_size);
@@ -80,6 +124,12 @@ WindowContext *WinRealloc(WindowController *controller, int next_size) {
   return new_windows;
 }
 
+/**
+ * @brief Reallocates the controller's window list to a new size and
+ *        initializes any new windows as necessary
+ * @param controller - Pointer to WindowController to be reallocated
+ * @param next_size - The new size for the window list
+ */
 void ControllerRealloc(WindowController *controller, int next_size) {
   if (next_size > 0 && next_size != controller->win_list_size) {
     if (next_size > controller->win_list_size) {
@@ -95,6 +145,10 @@ void ControllerRealloc(WindowController *controller, int next_size) {
   }
 }
 
+/**
+ * @brief Initializes all windows in the controller's window list
+ * @param controller - Pointer to WindowController whose windows are to be initialized
+ */
 void InitControllerWindows(WindowController *controller) {
   ControllerMalloc(controller);
 
@@ -103,6 +157,11 @@ void InitControllerWindows(WindowController *controller) {
   }
 }
 
+/**
+ * @brief Initializes the directory context for a window with the directory contents of a given dirname
+ * @param dir_context - Pointer to DirectoryContext to initialize
+ * @param dirname - Name of the directory to load into the DirectoryContext
+ */
 void InitDirOnWindow(DirectoryContext *dir_context, const char *dirname) {
   struct dirent **dt;
   int num_entries = scandir(dirname, &dt, NULL, alphasort);
