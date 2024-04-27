@@ -1,60 +1,4 @@
-#include "ui.h"
-
-static win_controller_t **GetGlobalController() {
-  static win_controller_t *controller = NULL;
-  return &controller;
-}
-
-static void InitGlobalController(win_controller_t *controller) {
-  win_controller_t **temp = GetGlobalController();
-  if (*temp == NULL) {
-    *temp = controller;
-  } else {
-    exit(EXIT_FAILURE);
-  }
-}
-
-static void FreeDirList(wcontext_t *context) {
-  if (context->dir_list != NULL) {
-    free(context->dir_list);
-  }
-}
-
-static void FreeWindow(window_t *window) {
-  if(window != NULL){
-    delwin(window->win);
-  }
-  FreeDirList(&window->wcontext);
-}
-
-static void FreeController(win_controller_t *controller) {
-  for (int i = 0; i < controller->size; i++) {
-    FreeWindow(&controller->windows[i]);
-  }
-  if(controller != NULL){
-    free(controller->windows);
-  }
-}
-
-static void SuccessfulExit(int exit_type) {
-  win_controller_t **controller = GetGlobalController();
-
-  FreeController(*controller);
-  endwin();
-  exit(exit_type);
-}
-
-static void InitDirOnWindow(wcontext_t *context, const char *dirname) {
-  struct dirent **dt;
-  int num_entries = scandir(dirname, &dt, NULL, alphasort);
-  if (num_entries < 0) {
-    context->dir_list = NULL;
-    SuccessfulExit(EXIT_FAILURE);
-  }
-  context->dir_list = dt;
-  context->selected_item = 0;
-  context->size = num_entries;
-}
+#include "file_manager.h"
 
 static void Wprintnw(window_t *win, const char *str, int start, int end) {
   if (start < end) {
@@ -162,65 +106,8 @@ static void InitNcurses() {
   refresh();
 }
 
-static void ControllerMalloc(win_controller_t *controller) {
-  if (controller->size > 0) {
-    window_t *temp = calloc(sizeof(window_t), controller->size);
-    if (temp == NULL) {
-      SuccessfulExit(EXIT_FAILURE);
-    } else {
-      controller->windows = temp;
-    }
-  }
-}
-
-static void InitWindow(win_controller_t *controller, int index, int size) {
-  window_t *window = &controller->windows[index];
-  window->win = newwin(LINES, COLS / size, 0, COLS / size * index);
-  if (window->win == NULL) {
-    SuccessfulExit(EXIT_FAILURE);
-  }
-
-  char *err = realpath(".", window->wcontext.absolute_path);
-  if (err == NULL) {
-    SuccessfulExit(EXIT_FAILURE);
-  }
-  InitDirOnWindow(&(window->wcontext), ".");
-}
-
-static window_t *WinRealloc(win_controller_t *controller, int next_size) {
-  window_t *new_windows =
-      realloc(controller->windows, sizeof(window_t) * next_size);
-  if (new_windows == NULL) {
-    SuccessfulExit(EXIT_FAILURE);
-  }
-
-  return new_windows;
-}
-
-static void ControllerRealloc(win_controller_t *controller, int next_size) {
-  if (next_size > 0 && next_size != controller->size) {
-    if (next_size > controller->size) {
-      controller->windows = WinRealloc(controller, next_size);
-      for (int i = controller->size; i < next_size; i++) {
-        InitWindow(controller, i, next_size);
-      }
-      controller->size = next_size;
-    } else if (next_size < controller->size) {
-      controller->windows = WinRealloc(controller, next_size);
-      controller->size = next_size;
-    }
-  }
-}
-
-static void InitControllerWindows(win_controller_t *controller) {
-  ControllerMalloc(controller);
-
-  for (int i = 0; i < controller->size; i++) {
-    InitWindow(controller, i, controller->size);
-  }
-}
-
-static void InitFman(win_controller_t *controller) {
+static void InitFileManager(win_controller_t *controller) {
+  controller->size = START_WINDOW_COUNT;
   InitNcurses();
   InitGlobalController(controller);
   InitControllerWindows(controller);
@@ -231,17 +118,6 @@ static void SwitchCurWin(win_controller_t *controller) {
   if (controller->current_window >= controller->size) {
     controller->current_window = 0;
   }
-}
-
-static int CurrentItemIsDirectory(window_t *win) {
-  char temp_buf[PATH_MAX] = {0};
-  strcpy(temp_buf, win->wcontext.absolute_path);
-  AppendElemToPath(temp_buf,
-                   win->wcontext.dir_list[win->wcontext.selected_item]->d_name);
-
-  struct stat statbuf;
-  if (stat(temp_buf, &statbuf) != 0) return 0;
-  return S_ISDIR(statbuf.st_mode);
 }
 
 static void SwitchDir(window_t *win) {
@@ -255,7 +131,7 @@ static void SwitchDir(window_t *win) {
         InitDirOnWindow(&win->wcontext, win->wcontext.absolute_path);
         break;
       default:
-        if (CurrentItemIsDirectory(win)) {
+        if (IsDirectory(win->wcontext.absolute_path, win->wcontext.dir_list[win->wcontext.selected_item]->d_name)) {
           AppendElemToPath(
               win->wcontext.absolute_path,
               win->wcontext.dir_list[win->wcontext.selected_item]->d_name);
@@ -291,44 +167,48 @@ static void HandleInput(char ch, win_controller_t *controller) {
     case 'w':
       ChangeSelectedItem(
           &controller->windows[controller->current_window].wcontext, C_UP);
-          refresh_type = 1;
+      refresh_type = REFRESH_CURRENT;
       break;
     case 's':
       ChangeSelectedItem(
           &controller->windows[controller->current_window].wcontext, C_DOWN);
-          refresh_type = 1;
+      refresh_type = REFRESH_CURRENT;
       break;
     case 'n':
       if (controller->size < MAX_WINDOW_COUNT) {
         ControllerRealloc(controller, controller->size + 1);
-        refresh_type = 2;
+        refresh_type = REFRESH_ALL;
       }
       break;
     case 'd':
       if (controller->size > MIN_WINDOW_COUNT) {
         ControllerRealloc(controller, controller->size - 1);
-        refresh_type = 2;
+        refresh_type = REFRESH_ALL;
       }
       break;
     case '\t':
       SwitchCurWin(controller);
-      refresh_type = 1;
+      refresh_type = REFRESH_CURRENT_AND_PREV;
       break;
     case '\n':
       SwitchDir(&controller->windows[controller->current_window]);
-      refresh_type = 1;
+      refresh_type = REFRESH_CURRENT;
       break;
     case 'q':
       SuccessfulExit(EXIT_SUCCESS);
   }
-  if (prev_win_index != controller->current_window) {
-    WinRefresh(&controller->windows[prev_win_index], 0);
-    WinRefresh(&controller->windows[controller->current_window], 1);
-  } else if(refresh_type == 1) {
-    CurrentWinRefresh(controller);
-  } else if(refresh_type == 2) {
-    ResizeWin(controller, LINES, COLS);
-    WinRefreshAll(controller);
+  switch(refresh_type){
+    case REFRESH_ALL:
+      ResizeWin(controller, LINES, COLS);
+      WinRefreshAll(controller);
+      break;
+    case REFRESH_CURRENT_AND_PREV:
+      WinRefresh(&controller->windows[prev_win_index], 0);
+      CurrentWinRefresh(controller);
+      break;
+    case REFRESH_CURRENT:
+      CurrentWinRefresh(controller);
+      break;
   }
 }
 
@@ -336,15 +216,12 @@ static void Renderer(win_controller_t *controller) {
   WinRefreshAll(controller);
   while (1) {
     HandleInput(getch(), controller);
-    usleep(10000);
   }
 }
 
 void Run() {
   win_controller_t controller = {0};
-  controller.current_window = 0;
-  controller.size = 2;
-  InitFman(&controller);
+  InitFileManager(&controller);
   Renderer(&controller);
 
   SuccessfulExit(EXIT_SUCCESS);
