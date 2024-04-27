@@ -22,17 +22,17 @@ void FreeDirList(wcontext_t *context) {
 
 void FreeWindow(window_t *window) {
   if (window != NULL) {
-    delwin(window->win);
+    delwin(window->window);
   }
   FreeDirList(&window->wcontext);
 }
 
 void FreeController(win_controller_t *controller) {
-  for (int i = 0; i < controller->size; i++) {
-    FreeWindow(&controller->windows[i]);
+  for (int i = 0; i < controller->win_list_size; i++) {
+    FreeWindow(&controller->win_list[i]);
   }
   if (controller != NULL) {
-    free(controller->windows);
+    free(controller->win_list);
   }
 }
 
@@ -45,20 +45,20 @@ void SuccessfulExit(int exit_type) {
 }
 
 void ControllerMalloc(win_controller_t *controller) {
-  if (controller->size > 0) {
-    window_t *temp = calloc(sizeof(window_t), controller->size);
+  if (controller->win_list_size > 0) {
+    window_t *temp = calloc(sizeof(window_t), controller->win_list_size);
     if (temp == NULL) {
       SuccessfulExit(EXIT_FAILURE);
     } else {
-      controller->windows = temp;
+      controller->win_list = temp;
     }
   }
 }
 
 void InitWindow(win_controller_t *controller, int index, int size) {
-  window_t *window = &controller->windows[index];
-  window->win = newwin(LINES, COLS / size, 0, COLS / size * index);
-  if (window->win == NULL) {
+  window_t *window = &controller->win_list[index];
+  window->window = newwin(LINES, COLS / size, 0, COLS / size * index);
+  if (window->window == NULL) {
     SuccessfulExit(EXIT_FAILURE);
   }
 
@@ -71,7 +71,7 @@ void InitWindow(win_controller_t *controller, int index, int size) {
 
 window_t *WinRealloc(win_controller_t *controller, int next_size) {
   window_t *new_windows =
-      realloc(controller->windows, sizeof(window_t) * next_size);
+      realloc(controller->win_list, sizeof(window_t) * next_size);
   if (new_windows == NULL) {
     SuccessfulExit(EXIT_FAILURE);
   }
@@ -80,16 +80,16 @@ window_t *WinRealloc(win_controller_t *controller, int next_size) {
 }
 
 void ControllerRealloc(win_controller_t *controller, int next_size) {
-  if (next_size > 0 && next_size != controller->size) {
-    if (next_size > controller->size) {
-      controller->windows = WinRealloc(controller, next_size);
-      for (int i = controller->size; i < next_size; i++) {
+  if (next_size > 0 && next_size != controller->win_list_size) {
+    if (next_size > controller->win_list_size) {
+      controller->win_list = WinRealloc(controller, next_size);
+      for (int i = controller->win_list_size; i < next_size; i++) {
         InitWindow(controller, i, next_size);
       }
-      controller->size = next_size;
-    } else if (next_size < controller->size) {
-      controller->windows = WinRealloc(controller, next_size);
-      controller->size = next_size;
+      controller->win_list_size = next_size;
+    } else if (next_size < controller->win_list_size) {
+      controller->win_list = WinRealloc(controller, next_size);
+      controller->win_list_size = next_size;
     }
   }
 }
@@ -97,8 +97,8 @@ void ControllerRealloc(win_controller_t *controller, int next_size) {
 void InitControllerWindows(win_controller_t *controller) {
   ControllerMalloc(controller);
 
-  for (int i = 0; i < controller->size; i++) {
-    InitWindow(controller, i, controller->size);
+  for (int i = 0; i < controller->win_list_size; i++) {
+    InitWindow(controller, i, controller->win_list_size);
   }
 }
 
@@ -111,5 +111,5 @@ void InitDirOnWindow(wcontext_t *context, const char *dirname) {
   }
   context->dir_list = dt;
   context->selected_item = 0;
-  context->size = num_entries;
+  context->dir_list_size = num_entries;
 }

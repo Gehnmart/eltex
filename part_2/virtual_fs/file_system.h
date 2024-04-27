@@ -2,9 +2,9 @@
 #define VIRTUAL_FS_FILESYSTEM_H
 
 #include <dirent.h>
+#include <linux/limits.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <linux/limits.h>
 
 void AppendElemToPath(char *path, const char *elem);
 void DeleteEndDir(char *path);

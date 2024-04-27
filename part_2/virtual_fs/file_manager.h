@@ -1,19 +1,17 @@
 #ifndef VIRTUAL_FS_FILE_MANAGER_H
 #define VIRTUAL_FS_FILE_MANAGER_H
 
-#include "file_system.h"
-#include "controller.h"
-
 #include <linux/limits.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <dirent.h>
+#include <malloc.h>
+#include <ncurses.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <malloc.h>
-#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <ncurses.h>
+
+#include "controller.h"
+#include "file_system.h"
 
 #define MAX_WINDOW_COUNT 8
 #define MIN_WINDOW_COUNT 1

@@ -1,8 +1,8 @@
 #include "file_system.h"
 
 void AppendElemToPath(char *path, const char *elem) {
-  strcat(path, "/");
-  strcat(path, elem);
+  strncat(path, "/", PATH_MAX - 1);
+  strncat(path, elem, PATH_MAX - 1);
 }
 
 void DeleteEndDir(char *path) {
@@ -16,11 +16,10 @@ void DeleteEndDir(char *path) {
 
 int IsDirectory(const char *absolute_path, const char *d_name) {
   char temp_buf[PATH_MAX] = {0};
-  strcpy(temp_buf, absolute_path);
+  strncpy(temp_buf, absolute_path, PATH_MAX - 1);
   AppendElemToPath(temp_buf, d_name);
 
   struct stat statbuf;
   if (stat(temp_buf, &statbuf) != 0) return 0;
   return S_ISDIR(statbuf.st_mode);
 }
-
