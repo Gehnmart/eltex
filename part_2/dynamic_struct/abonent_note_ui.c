@@ -1,6 +1,6 @@
 #include "abonent_note_ui.h"
 
-int AbonentNoteUi(abonent_control_t *abonent_control) {
+int AbonentNoteUi(AbonentControll *abonent_control) {
   int option = 0;
   printf(
       "1) Add abonent\n"

@@ -14,6 +14,6 @@ enum MenuOptions {
   EXIT
 };
 
-int AbonentNoteUi(abonent_control_t *abonent_control);
+int AbonentNoteUi(AbonentControll *abonent_control);
 
 #endif  // DYNAMIC_STRUCT_ABONENT_NOTE_UI_H

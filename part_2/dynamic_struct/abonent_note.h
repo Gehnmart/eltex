@@ -18,17 +18,17 @@ typedef struct {
   char name[BUFF_MAX];
   char second_name[BUFF_MAX];
   char tel[BUFF_MAX];
-} abonent_t;
+} Abonent;
 
 typedef struct {
   int len;
-  abonent_t *abonent_list;
-} abonent_control_t;
+  Abonent *abonent_list;
+} AbonentControll;
 
-void InitAbonentList(abonent_control_t *abonent_control);
-void DestroyAbonentList(abonent_control_t *abonent_control);
-void ErrorHandler(abonent_control_t *abonent_control, int received,
+void InitAbonentList(AbonentControll *abonent_control);
+void DestroyAbonentList(AbonentControll *abonent_control);
+void ErrorHandler(AbonentControll *abonent_control, int received,
                   int expected);
-int PerformAction(int option, abonent_control_t *abonent_control);
+int PerformAction(int option, AbonentControll *abonent_control);
 
 #endif  // DYNAMIC_STRUCT_ABONENT_NOTE_H
