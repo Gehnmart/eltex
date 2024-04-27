@@ -1,64 +1,67 @@
 #include "file_manager.h"
 
-static void Wprintnw(window_t *window, const char *str, int start, int end) {
+static void Wprintnw(WindowContext *win_context, const char *str, int start,
+                     int end) {
   if (start < end) {
     for (int i = start; i < end - 2; i++) {
-      wprintw(window->window, "%c", str[i]);
+      wprintw(win_context->window, "%c", str[i]);
     }
   }
 }
 
-static void WprintAllElements(window_t *window) {
-  int start_index = window->wcontext.selected_item < LINES - 2
+static void WprintAllElements(WindowContext *win_context) {
+  int start_index = win_context->dir_context.selected_item < LINES - 2
                         ? 0
-                        : window->wcontext.selected_item - (LINES - 3);
-  int end_index = MIN(window->wcontext.dir_list_size, start_index + LINES - 2);
-  int width = getmaxx(window->window);
+                        : win_context->dir_context.selected_item - (LINES - 3);
+  int end_index =
+      MIN(win_context->dir_context.dir_list_size, start_index + LINES - 2);
+  int width = getmaxx(win_context->window);
 
   for (int i = start_index; i < end_index; i++) {
-    int slen = strlen(window->wcontext.dir_list[i]->d_name);
-    wmove(window->window, i - start_index + 1, 1);
-    if (i == window->wcontext.selected_item) {
-      wattron(window->window, A_REVERSE | A_BOLD);
+    int slen = strlen(win_context->dir_context.dir_list[i]->d_name);
+    wmove(win_context->window, i - start_index + 1, 1);
+    if (i == win_context->dir_context.selected_item) {
+      wattron(win_context->window, A_REVERSE | A_BOLD);
       if (slen > width - 2) {
-        Wprintnw(window, window->wcontext.dir_list[i]->d_name, 0,
+        Wprintnw(win_context, win_context->dir_context.dir_list[i]->d_name, 0,
                  slen - (slen - width));
       } else {
-        wprintw(window->window, "%s", window->wcontext.dir_list[i]->d_name);
+        wprintw(win_context->window, "%s",
+                win_context->dir_context.dir_list[i]->d_name);
       }
-      wattroff(window->window, A_REVERSE | A_BOLD);
+      wattroff(win_context->window, A_REVERSE | A_BOLD);
     } else {
       if (slen > width - 2) {
-        Wprintnw(window, window->wcontext.dir_list[i]->d_name, 0,
+        Wprintnw(win_context, win_context->dir_context.dir_list[i]->d_name, 0,
                  slen - (slen - width));
       } else {
-        wprintw(window->window, "%s", window->wcontext.dir_list[i]->d_name);
+        wprintw(win_context->window, "%s",
+                win_context->dir_context.dir_list[i]->d_name);
       }
     }
   }
-  wrefresh(window->window);
+  wrefresh(win_context->window);
 }
 
-static void WinRefresh(window_t *window, int is_current) {
-  wclear(window->window);
+static void WinRefresh(WindowContext *win_context, int is_current) {
+  wclear(win_context->window);
   if (is_current) {
-    wattron(window->window, A_BOLD);
-    box(window->window, 0, 0);
-    wattroff(window->window, A_BOLD);
+    wattron(win_context->window, A_BOLD);
+    box(win_context->window, 0, 0);
+    wattroff(win_context->window, A_BOLD);
   } else {
-    wattron(window->window, A_DIM);
-    box(window->window, 0, 0);
-    wattroff(window->window, A_DIM);
+    wattron(win_context->window, A_DIM);
+    box(win_context->window, 0, 0);
+    wattroff(win_context->window, A_DIM);
   }
-  WprintAllElements(window);
-  wrefresh(window->window);
+  WprintAllElements(win_context);
 }
 
-static void CurrentWinRefresh(win_controller_t *controller) {
+static void CurrentWinRefresh(WindowController *controller) {
   WinRefresh(&controller->win_list[controller->current_window], 1);
 }
 
-static void WinRefreshAll(win_controller_t *controller) {
+static void WinRefreshAll(WindowController *controller) {
   for (int i = 0; i < controller->win_list_size; i++) {
     WINDOW *cur_win = controller->win_list[i].window;
     wclear(cur_win);
@@ -76,7 +79,7 @@ static void WinRefreshAll(win_controller_t *controller) {
   }
 }
 
-static void ResizeWin(win_controller_t *controller, int y, int x) {
+static void ResizeWin(WindowController *controller, int y, int x) {
   clear();
   refresh();
   for (int i = 0; i < controller->win_list_size; i++) {
@@ -92,7 +95,7 @@ static void SigWinch(int signo) {
 
   resizeterm(size.ws_row, size.ws_col);
 
-  win_controller_t **global_controller = GetGlobalController();
+  WindowController **global_controller = GetGlobalController();
   ResizeWin(*global_controller, size.ws_row, size.ws_col);
   WinRefreshAll(*global_controller);
 }
@@ -106,46 +109,51 @@ static void InitNcurses() {
   refresh();
 }
 
-static void InitFileManager(win_controller_t *controller) {
+static void InitFileManager(WindowController *controller) {
   controller->win_list_size = START_WINDOW_COUNT;
   InitNcurses();
   InitGlobalController(controller);
   InitControllerWindows(controller);
 }
 
-static void SwitchCurWin(win_controller_t *controller) {
+static void SwitchCurWin(WindowController *controller) {
   controller->current_window++;
   if (controller->current_window >= controller->win_list_size) {
     controller->current_window = 0;
   }
 }
 
-static void SwitchDir(window_t *window) {
-  if (window->wcontext.dir_list[window->wcontext.selected_item] != NULL) {
-    switch (window->wcontext.selected_item) {
+static void SwitchDir(WindowContext *win_context) {
+  if (win_context->dir_context
+          .dir_list[win_context->dir_context.selected_item] != NULL) {
+    switch (win_context->dir_context.selected_item) {
       case 0:
         break;
       case 1:
-        FreeDirList(&window->wcontext);
-        DeleteEndDir(window->wcontext.absolute_path);
-        InitDirOnWindow(&window->wcontext, window->wcontext.absolute_path);
+        FreeDirList(&win_context->dir_context);
+        DeleteEndDir(win_context->dir_context.absolute_path);
+        InitDirOnWindow(&win_context->dir_context,
+                        win_context->dir_context.absolute_path);
         break;
       default:
-        if (IsDirectory(
-                window->wcontext.absolute_path,
-                window->wcontext.dir_list[window->wcontext.selected_item]->d_name)) {
-          AppendElemToPath(
-              window->wcontext.absolute_path,
-              window->wcontext.dir_list[window->wcontext.selected_item]->d_name);
-          FreeDirList(&window->wcontext);
-          InitDirOnWindow(&window->wcontext, window->wcontext.absolute_path);
+        if (IsDirectory(win_context->dir_context.absolute_path,
+                        win_context->dir_context
+                            .dir_list[win_context->dir_context.selected_item]
+                            ->d_name)) {
+          AppendElemToPath(win_context->dir_context.absolute_path,
+                           win_context->dir_context
+                               .dir_list[win_context->dir_context.selected_item]
+                               ->d_name);
+          FreeDirList(&win_context->dir_context);
+          InitDirOnWindow(&win_context->dir_context,
+                          win_context->dir_context.absolute_path);
         }
         break;
     }
   }
 }
 
-static void ChangeSelectedItem(wcontext_t *context, int action) {
+static void ChangeSelectedItem(DirectoryContext *context, int action) {
   int choise = context->selected_item;
 
   switch (action) {
@@ -162,18 +170,19 @@ static void ChangeSelectedItem(wcontext_t *context, int action) {
   }
 }
 
-static void HandleInput(char ch, win_controller_t *controller) {
+static void HandleInput(char ch, WindowController *controller) {
   int prev_win_index = controller->current_window;
   int refresh_type = 0;
   switch (ch) {
     case 'w':
       ChangeSelectedItem(
-          &controller->win_list[controller->current_window].wcontext, C_UP);
+          &controller->win_list[controller->current_window].dir_context, C_UP);
       refresh_type = REFRESH_CURRENT;
       break;
     case 's':
       ChangeSelectedItem(
-          &controller->win_list[controller->current_window].wcontext, C_DOWN);
+          &controller->win_list[controller->current_window].dir_context,
+          C_DOWN);
       refresh_type = REFRESH_CURRENT;
       break;
     case 'n':
@@ -214,7 +223,7 @@ static void HandleInput(char ch, win_controller_t *controller) {
   }
 }
 
-static void Renderer(win_controller_t *controller) {
+static void Renderer(WindowController *controller) {
   WinRefreshAll(controller);
   while (1) {
     HandleInput(getch(), controller);
@@ -222,7 +231,7 @@ static void Renderer(win_controller_t *controller) {
 }
 
 void Run() {
-  win_controller_t controller = {0};
+  WindowController controller = {0};
   InitFileManager(&controller);
   Renderer(&controller);
 

@@ -1,12 +1,12 @@
 #include "controller.h"
 
-win_controller_t **GetGlobalController() {
-  static win_controller_t *controller = NULL;
+WindowController **GetGlobalController() {
+  static WindowController *controller = NULL;
   return &controller;
 }
 
-void InitGlobalController(win_controller_t *controller) {
-  win_controller_t **temp = GetGlobalController();
+void InitGlobalController(WindowController *controller) {
+  WindowController **temp = GetGlobalController();
   if (*temp == NULL) {
     *temp = controller;
   } else {
@@ -14,20 +14,20 @@ void InitGlobalController(win_controller_t *controller) {
   }
 }
 
-void FreeDirList(wcontext_t *context) {
-  if (context->dir_list != NULL) {
-    free(context->dir_list);
+void FreeDirList(DirectoryContext *win_context) {
+  if (win_context->dir_list != NULL) {
+    free(win_context->dir_list);
   }
 }
 
-void FreeWindow(window_t *window) {
-  if (window != NULL) {
-    delwin(window->window);
+void FreeWindow(WindowContext *win_context) {
+  if (win_context != NULL) {
+    delwin(win_context->window);
   }
-  FreeDirList(&window->wcontext);
+  FreeDirList(&win_context->dir_context);
 }
 
-void FreeController(win_controller_t *controller) {
+void FreeController(WindowController *controller) {
   for (int i = 0; i < controller->win_list_size; i++) {
     FreeWindow(&controller->win_list[i]);
   }
@@ -37,16 +37,17 @@ void FreeController(win_controller_t *controller) {
 }
 
 void SuccessfulExit(int exit_type) {
-  win_controller_t **controller = GetGlobalController();
+  WindowController **controller = GetGlobalController();
 
   FreeController(*controller);
   endwin();
   exit(exit_type);
 }
 
-void ControllerMalloc(win_controller_t *controller) {
+void ControllerMalloc(WindowController *controller) {
   if (controller->win_list_size > 0) {
-    window_t *temp = calloc(sizeof(window_t), controller->win_list_size);
+    WindowContext *temp =
+        calloc(sizeof(WindowContext), controller->win_list_size);
     if (temp == NULL) {
       SuccessfulExit(EXIT_FAILURE);
     } else {
@@ -55,23 +56,23 @@ void ControllerMalloc(win_controller_t *controller) {
   }
 }
 
-void InitWindow(win_controller_t *controller, int index, int size) {
-  window_t *window = &controller->win_list[index];
+void InitWindow(WindowController *controller, int index, int size) {
+  WindowContext *window = &controller->win_list[index];
   window->window = newwin(LINES, COLS / size, 0, COLS / size * index);
   if (window->window == NULL) {
     SuccessfulExit(EXIT_FAILURE);
   }
 
-  char *err = realpath(".", window->wcontext.absolute_path);
+  char *err = realpath(".", window->dir_context.absolute_path);
   if (err == NULL) {
     SuccessfulExit(EXIT_FAILURE);
   }
-  InitDirOnWindow(&(window->wcontext), ".");
+  InitDirOnWindow(&(window->dir_context), ".");
 }
 
-window_t *WinRealloc(win_controller_t *controller, int next_size) {
-  window_t *new_windows =
-      realloc(controller->win_list, sizeof(window_t) * next_size);
+WindowContext *WinRealloc(WindowController *controller, int next_size) {
+  WindowContext *new_windows =
+      realloc(controller->win_list, sizeof(WindowContext) * next_size);
   if (new_windows == NULL) {
     SuccessfulExit(EXIT_FAILURE);
   }
@@ -79,7 +80,7 @@ window_t *WinRealloc(win_controller_t *controller, int next_size) {
   return new_windows;
 }
 
-void ControllerRealloc(win_controller_t *controller, int next_size) {
+void ControllerRealloc(WindowController *controller, int next_size) {
   if (next_size > 0 && next_size != controller->win_list_size) {
     if (next_size > controller->win_list_size) {
       controller->win_list = WinRealloc(controller, next_size);
@@ -94,7 +95,7 @@ void ControllerRealloc(win_controller_t *controller, int next_size) {
   }
 }
 
-void InitControllerWindows(win_controller_t *controller) {
+void InitControllerWindows(WindowController *controller) {
   ControllerMalloc(controller);
 
   for (int i = 0; i < controller->win_list_size; i++) {
@@ -102,14 +103,14 @@ void InitControllerWindows(win_controller_t *controller) {
   }
 }
 
-void InitDirOnWindow(wcontext_t *context, const char *dirname) {
+void InitDirOnWindow(DirectoryContext *dir_context, const char *dirname) {
   struct dirent **dt;
   int num_entries = scandir(dirname, &dt, NULL, alphasort);
   if (num_entries < 0) {
-    context->dir_list = NULL;
+    dir_context->dir_list = NULL;
     SuccessfulExit(EXIT_FAILURE);
   }
-  context->dir_list = dt;
-  context->selected_item = 0;
-  context->dir_list_size = num_entries;
+  dir_context->dir_list = dt;
+  dir_context->selected_item = 0;
+  dir_context->dir_list_size = num_entries;
 }

@@ -9,38 +9,38 @@
 #include "file_system.h"
 
 typedef struct {
-  char absolute_path[PATH_MAX];
   struct dirent **dir_list;
+  char absolute_path[PATH_MAX];
   int dir_list_size;
   int selected_item;
-} wcontext_t;
+} DirectoryContext;
 
 typedef struct {
   WINDOW *window;
-  wcontext_t wcontext;
-} window_t;
+  DirectoryContext dir_context;
+} WindowContext;
 
 typedef struct {
-  window_t *win_list;
+  WindowContext *win_list;
   int current_window;
   int win_list_size;
-} win_controller_t;
+} WindowController;
 
-win_controller_t **GetGlobalController();
+WindowController **GetGlobalController();
 
 void SuccessfulExit(int exit_type);
 
-void InitGlobalController(win_controller_t *controller);
-void InitControllerWindows(win_controller_t *controller);
-void InitDirOnWindow(wcontext_t *context, const char *dirname);
-void InitWindow(win_controller_t *controller, int index, int win_list_size);
+void InitGlobalController(WindowController *controller);
+void InitControllerWindows(WindowController *controller);
+void InitDirOnWindow(DirectoryContext *dir_context, const char *dirname);
+void InitWindow(WindowController *controller, int index, int win_list_size);
 
-void FreeDirList(wcontext_t *context);
-void FreeWindow(window_t *window);
-void FreeController(win_controller_t *controller);
+void FreeDirList(DirectoryContext *dir_context);
+void FreeWindow(WindowContext *win_context);
+void FreeController(WindowController *controller);
 
-void ControllerMalloc(win_controller_t *controller);
-window_t *WinRealloc(win_controller_t *controller, int next_size);
-void ControllerRealloc(win_controller_t *controller, int next_size);
+void ControllerMalloc(WindowController *controller);
+WindowContext *WinRealloc(WindowController *controller, int next_size);
+void ControllerRealloc(WindowController *controller, int next_size);
 
 #endif  // VIRTUAL_FS_CONTROLLER_H
