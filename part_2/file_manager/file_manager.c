@@ -2,10 +2,12 @@
 
 /**
  * @brief Prints a substring of 'str' from 'start' to 'end - 2' on the ncurses window.
+ * why im using 2 magic constant unknow it but 2 is border symbols!
  * @param win_context Pointer to the window context.
  * @param str The string to print.
  * @param start The starting index from where to begin printing.
  * @param end The ending index where to stop printing.
+ * 
  */
 static void Wprintnw(WindowContext *win_context, const char *str, int start,
                      int end) {
