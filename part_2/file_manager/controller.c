@@ -25,8 +25,10 @@ void InitGlobalController(WindowController *controller) {
 }
 
 /**
- * @brief Frees the memory allocated for the directory list within a DirectoryContext
- * @param dir_context - Pointer to DirectoryContext containing the directory list to free
+ * @brief Frees the memory allocated for the directory list within a
+ * DirectoryContext
+ * @param dir_context - Pointer to DirectoryContext containing the directory
+ * list to free
  */
 void FreeDirList(DirectoryContext *win_context) {
   if (win_context->dir_list != NULL) {
@@ -47,7 +49,8 @@ void FreeWindow(WindowContext *win_context) {
 }
 
 /**
- * @brief Frees the memory for a WindowController, including all its WindowContexts
+ * @brief Frees the memory for a WindowController, including all its
+ * WindowContexts
  * @param controller - Pointer to WindowController to be freed
  */
 void FreeController(WindowController *controller) {
@@ -74,7 +77,8 @@ void SuccessfulExit(int exit_type) {
 
 /**
  * @brief Allocates memory for the window list in the controller
- * @param controller - Pointer to WindowController whose window list needs allocation
+ * @param controller - Pointer to WindowController whose window list needs
+ * allocation
  */
 void ControllerMalloc(WindowController *controller) {
   if (controller->win_list_size > 0) {
@@ -90,7 +94,8 @@ void ControllerMalloc(WindowController *controller) {
 
 /**
  * @brief Initializes a window in the controller at a given index
- * @param controller - Pointer to WindowController containing the window to initialize
+ * @param controller - Pointer to WindowController containing the window to
+ * initialize
  * @param index - Index of the window to initialize
  * @param size - Number of windows to split the screen into
  */
@@ -110,7 +115,8 @@ void InitWindow(WindowController *controller, int index, int size) {
 
 /**
  * @brief Reallocates the window list of the controller to a new size
- * @param controller - Pointer to WindowController whose window list is to be reallocated
+ * @param controller - Pointer to WindowController whose window list is to be
+ * reallocated
  * @param next_size - New size for the window list
  * @return Pointer to the newly allocated WindowContext array
  */
@@ -143,11 +149,15 @@ void ControllerRealloc(WindowController *controller, int next_size) {
       controller->win_list_size = next_size;
     }
   }
+  if(controller->current_window >= next_size){
+    controller->current_window = next_size - 1;
+  }
 }
 
 /**
  * @brief Initializes all windows in the controller's window list
- * @param controller - Pointer to WindowController whose windows are to be initialized
+ * @param controller - Pointer to WindowController whose windows are to be
+ * initialized
  */
 void InitControllerWindows(WindowController *controller) {
   ControllerMalloc(controller);
@@ -158,7 +168,8 @@ void InitControllerWindows(WindowController *controller) {
 }
 
 /**
- * @brief Initializes the directory context for a window with the directory contents of a given dirname
+ * @brief Initializes the directory context for a window with the directory
+ * contents of a given dirname
  * @param dir_context - Pointer to DirectoryContext to initialize
  * @param dirname - Name of the directory to load into the DirectoryContext
  */

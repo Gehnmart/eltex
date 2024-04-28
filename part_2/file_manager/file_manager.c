@@ -1,13 +1,23 @@
 #include "file_manager.h"
 
+static void SaveSettings() {
+  def_prog_mode();
+  refresh();
+}
+
+static void RestoreSettings() {
+  endwin();
+  reset_prog_mode();
+  refresh();
+}
 /**
- * @brief Prints a substring of 'str' from 'start' to 'end - 2' on the ncurses window.
- * why im using 2 magic constant unknow it but 2 is border symbols!
+ * @brief Prints a substring of 'str' from 'start' to 'end - 2' on the ncurses
+ * window. why im using 2 magic constant unknow it but 2 is border symbols!
  * @param win_context Pointer to the window context.
  * @param str The string to print.
  * @param start The starting index from where to begin printing.
  * @param end The ending index where to stop printing.
- * 
+ *
  */
 static void Wprintnw(WindowContext *win_context, const char *str, int start,
                      int end) {
@@ -23,6 +33,11 @@ static void Wprintnw(WindowContext *win_context, const char *str, int start,
  * @param win_context Pointer to the window context.
  */
 static void WprintAllElements(WindowContext *win_context) {
+  start_color();
+  
+  init_pair(1, COLOR_YELLOW, COLOR_BLACK);
+  init_pair(2, COLOR_BLUE, COLOR_BLACK);
+
   int start_index = win_context->dir_context.selected_item < LINES - 2
                         ? 0
                         : win_context->dir_context.selected_item - (LINES - 3);
@@ -33,6 +48,11 @@ static void WprintAllElements(WindowContext *win_context) {
   for (int i = start_index; i < end_index; i++) {
     int slen = strlen(win_context->dir_context.dir_list[i]->d_name);
     wmove(win_context->window, i - start_index + 1, 1);
+    if(IsDirectory(win_context->dir_context.absolute_path, win_context->dir_context.dir_list[i]->d_name)){
+        wattron(win_context->window, COLOR_PAIR(1));
+      } else if(IsExecutable(win_context->dir_context.absolute_path, win_context->dir_context.dir_list[i]->d_name)){
+        wattron(win_context->window, COLOR_PAIR(2));
+    }
     if (i == win_context->dir_context.selected_item) {
       wattron(win_context->window, A_REVERSE | A_BOLD);
       if (slen > width - 2) {
@@ -52,6 +72,8 @@ static void WprintAllElements(WindowContext *win_context) {
                 win_context->dir_context.dir_list[i]->d_name);
       }
     }
+    wattroff(win_context->window, COLOR_PAIR(1));
+    wattroff(win_context->window, COLOR_PAIR(2));
   }
   wrefresh(win_context->window);
 }
@@ -106,7 +128,8 @@ static void WinRefreshAll(WindowController *controller) {
 }
 
 /**
- * @brief Resizes all windows managed by the controller based on the new terminal dimensions.
+ * @brief Resizes all windows managed by the controller based on the new
+ * terminal dimensions.
  * @param controller Pointer to the window controller.
  * @param y New height of the window.
  * @param x New width of the window.
@@ -175,7 +198,11 @@ static void SwitchCurWin(WindowController *controller) {
  * @brief Handles changing the directory or navigating up a directory level.
  * @param win_context Pointer to the window context.
  */
-static void SwitchDir(WindowContext *win_context) {
+static void ExecActionOnSelectedItem(WindowContext *win_context) {
+  char *absolute_path = win_context->dir_context.absolute_path;
+  char *selected_item_name =
+      win_context->dir_context.dir_list[win_context->dir_context.selected_item]
+          ->d_name;
   if (win_context->dir_context
           .dir_list[win_context->dir_context.selected_item] != NULL) {
     switch (win_context->dir_context.selected_item) {
@@ -183,22 +210,35 @@ static void SwitchDir(WindowContext *win_context) {
         break;
       case 1:
         FreeDirList(&win_context->dir_context);
-        DeleteEndDir(win_context->dir_context.absolute_path);
-        InitDirOnWindow(&win_context->dir_context,
-                        win_context->dir_context.absolute_path);
+        DeleteEndDir(absolute_path);
+        InitDirOnWindow(&win_context->dir_context, absolute_path);
         break;
       default:
-        if (IsDirectory(win_context->dir_context.absolute_path,
-                        win_context->dir_context
-                            .dir_list[win_context->dir_context.selected_item]
-                            ->d_name)) {
-          AppendElemToPath(win_context->dir_context.absolute_path,
-                           win_context->dir_context
-                               .dir_list[win_context->dir_context.selected_item]
-                               ->d_name);
+        if (IsDirectory(absolute_path, selected_item_name)) {
+          AppendElemToPath(absolute_path, selected_item_name);
           FreeDirList(&win_context->dir_context);
-          InitDirOnWindow(&win_context->dir_context,
-                          win_context->dir_context.absolute_path);
+          InitDirOnWindow(&win_context->dir_context, absolute_path);
+        } else if (IsExecutable(absolute_path, selected_item_name)) {
+          SaveSettings();
+
+          int status = 0;
+          char buf[PATH_MAX];
+          strncpy(buf, absolute_path, PATH_MAX);
+          AppendElemToPath(buf, selected_item_name);
+
+          int child_pid = fork();
+          if (child_pid == -1) {
+            perror("error fork");
+            exit(EXIT_FAILURE);
+          }
+          if (!child_pid) {
+            execl(buf, "", NULL);
+          }
+          if (wait(&status) == -1) {
+            exit(EXIT_FAILURE);
+          }
+
+          RestoreSettings();
         }
         break;
     }
@@ -211,19 +251,19 @@ static void SwitchDir(WindowContext *win_context) {
  * @param action The action to be taken (e.g., move up or down).
  */
 static void ChangeSelectedItem(DirectoryContext *dir_context, int action) {
-  int choise = dir_context->selected_item;
-
   switch (action) {
     case C_UP:
-      choise--;
+      dir_context->selected_item--;
       break;
     case C_DOWN:
-      choise++;
+      dir_context->selected_item++;
       break;
   }
-
-  if (choise >= 0 && choise < dir_context->dir_list_size) {
-    dir_context->selected_item = choise;
+  if (dir_context->selected_item < 0) {
+    dir_context->selected_item = dir_context->dir_list_size - 1;
+  }
+  else if (dir_context->selected_item > dir_context->dir_list_size - 1) {
+    dir_context->selected_item = 0;
   }
 }
 
@@ -264,7 +304,8 @@ static void HandleInput(char ch, WindowController *controller) {
       refresh_type = REFRESH_CURRENT_AND_PREV;
       break;
     case '\n':
-      SwitchDir(&controller->win_list[controller->current_window]);
+      ExecActionOnSelectedItem(
+          &controller->win_list[controller->current_window]);
       refresh_type = REFRESH_CURRENT;
       break;
     case 'q':
@@ -286,7 +327,8 @@ static void HandleInput(char ch, WindowController *controller) {
 }
 
 /**
- * @brief Main render loop for the file manager, handles input and window refreshing.
+ * @brief Main render loop for the file manager, handles input and window
+ * refreshing.
  * @param controller Pointer to the window controller.
  */
 static void Renderer(WindowController *controller) {

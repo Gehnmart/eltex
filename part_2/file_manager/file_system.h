@@ -9,5 +9,6 @@
 void AppendElemToPath(char *path, const char *elem);
 void DeleteEndDir(char *path);
 int IsDirectory(const char *absolute_path, const char *d_name);
+int IsExecutable(const char *absolute_path, const char *d_name);
 
 #endif  // VIRTUAL_FS_FILESYSTEM_H
