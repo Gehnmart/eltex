@@ -1,6 +1,6 @@
-TARGET = fman
+TARGET = mbash
 CC = gcc
-CFLAGS = -g -Werror -Wextra -Wall
+CFLAGS = -g
 LIBS = -lncurses
 
 SRCS = $(wildcard *.c)
@@ -17,3 +17,4 @@ $(TARGET): $(OBJS)
 clean:
 	rm -f $(TARGET)
 	rm -f *.o
+	rm -f *.txt

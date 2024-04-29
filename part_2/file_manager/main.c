@@ -1,6 +1,6 @@
 #include "file_manager.h"
 
-int main(int argc, char **argv) {
+int main() {
   Run();
   exit(EXIT_SUCCESS);
 }

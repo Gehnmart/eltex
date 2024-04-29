@@ -30,9 +30,9 @@ void InitGlobalController(WindowController *controller) {
  * @param dir_context - Pointer to DirectoryContext containing the directory
  * list to free
  */
-void FreeDirList(DirectoryContext *win_context) {
-  if (win_context->dir_list != NULL) {
-    free(win_context->dir_list);
+void FreeDirList(DirectoryContext *dir_context) {
+  if (dir_context != NULL) {
+    free(dir_context->dir_list);
   }
 }
 
@@ -44,8 +44,8 @@ void FreeDirList(DirectoryContext *win_context) {
 void FreeWindow(WindowContext *win_context) {
   if (win_context != NULL) {
     delwin(win_context->window);
+    FreeDirList(&win_context->dir_context);
   }
-  FreeDirList(&win_context->dir_context);
 }
 
 /**
@@ -54,10 +54,10 @@ void FreeWindow(WindowContext *win_context) {
  * @param controller - Pointer to WindowController to be freed
  */
 void FreeController(WindowController *controller) {
-  for (int i = 0; i < controller->win_list_size; i++) {
-    FreeWindow(&controller->win_list[i]);
-  }
   if (controller != NULL) {
+    for (int i = 0; i < controller->win_list_size; i++) {
+      FreeWindow(&controller->win_list[i]);
+    }
     free(controller->win_list);
   }
 }
@@ -99,9 +99,10 @@ void ControllerMalloc(WindowController *controller) {
  * @param index - Index of the window to initialize
  * @param size - Number of windows to split the screen into
  */
-void InitWindow(WindowController *controller, int index, int size) {
+void InitWindow(WindowController *controller, int index, int win_list_size) {
   WindowContext *window = &controller->win_list[index];
-  window->window = newwin(LINES, COLS / size, 0, COLS / size * index);
+  window->window =
+      newwin(LINES, COLS / win_list_size, 0, COLS / win_list_size * index);
   if (window->window == NULL) {
     SuccessfulExit(EXIT_FAILURE);
   }
@@ -144,12 +145,12 @@ void ControllerRealloc(WindowController *controller, int next_size) {
         InitWindow(controller, i, next_size);
       }
       controller->win_list_size = next_size;
-    } else if (next_size < controller->win_list_size) {
+    } else {
       controller->win_list = WinRealloc(controller, next_size);
       controller->win_list_size = next_size;
     }
   }
-  if(controller->current_window >= next_size){
+  if (controller->current_window >= next_size) {
     controller->current_window = next_size - 1;
   }
 }

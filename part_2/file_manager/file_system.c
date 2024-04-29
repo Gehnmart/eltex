@@ -23,7 +23,6 @@ void AppendElemToPath(char *path, const char *elem) {
  * characters from the last '/' to the end of the string.
  */
 void DeleteEndDir(char *path) {
-  char ch = 0;
   int i = strlen(path) - 1;
   for (; i > 0 && path[i] != '/'; i--) {
     path[i] = '\0';

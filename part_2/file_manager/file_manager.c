@@ -34,7 +34,7 @@ static void Wprintnw(WindowContext *win_context, const char *str, int start,
  */
 static void WprintAllElements(WindowContext *win_context) {
   start_color();
-  
+
   init_pair(1, COLOR_YELLOW, COLOR_BLACK);
   init_pair(2, COLOR_BLUE, COLOR_BLACK);
 
@@ -48,10 +48,12 @@ static void WprintAllElements(WindowContext *win_context) {
   for (int i = start_index; i < end_index; i++) {
     int slen = strlen(win_context->dir_context.dir_list[i]->d_name);
     wmove(win_context->window, i - start_index + 1, 1);
-    if(IsDirectory(win_context->dir_context.absolute_path, win_context->dir_context.dir_list[i]->d_name)){
-        wattron(win_context->window, COLOR_PAIR(1));
-      } else if(IsExecutable(win_context->dir_context.absolute_path, win_context->dir_context.dir_list[i]->d_name)){
-        wattron(win_context->window, COLOR_PAIR(2));
+    if (IsDirectory(win_context->dir_context.absolute_path,
+                    win_context->dir_context.dir_list[i]->d_name)) {
+      wattron(win_context->window, COLOR_PAIR(1));
+    } else if (IsExecutable(win_context->dir_context.absolute_path,
+                            win_context->dir_context.dir_list[i]->d_name)) {
+      wattron(win_context->window, COLOR_PAIR(2));
     }
     if (i == win_context->dir_context.selected_item) {
       wattron(win_context->window, A_REVERSE | A_BOLD);
@@ -149,6 +151,7 @@ static void ResizeWin(WindowController *controller, int y, int x) {
  * @param signo Signal number.
  */
 static void SigWinch(int signo) {
+  (void)signo;
   struct winsize size;
   ioctl(fileno(stdout), TIOCGWINSZ, (char *)&size);
 
@@ -203,45 +206,42 @@ static void ExecActionOnSelectedItem(WindowContext *win_context) {
   char *selected_item_name =
       win_context->dir_context.dir_list[win_context->dir_context.selected_item]
           ->d_name;
-  if (win_context->dir_context
-          .dir_list[win_context->dir_context.selected_item] != NULL) {
-    switch (win_context->dir_context.selected_item) {
-      case 0:
-        break;
-      case 1:
+  switch (win_context->dir_context.selected_item) {
+    case 0:
+      break;
+    case 1:
+      FreeDirList(&win_context->dir_context);
+      DeleteEndDir(absolute_path);
+      InitDirOnWindow(&win_context->dir_context, absolute_path);
+      break;
+    default:
+      if (IsDirectory(absolute_path, selected_item_name)) {
+        AppendElemToPath(absolute_path, selected_item_name);
         FreeDirList(&win_context->dir_context);
-        DeleteEndDir(absolute_path);
         InitDirOnWindow(&win_context->dir_context, absolute_path);
-        break;
-      default:
-        if (IsDirectory(absolute_path, selected_item_name)) {
-          AppendElemToPath(absolute_path, selected_item_name);
-          FreeDirList(&win_context->dir_context);
-          InitDirOnWindow(&win_context->dir_context, absolute_path);
-        } else if (IsExecutable(absolute_path, selected_item_name)) {
-          SaveSettings();
+      } else if (IsExecutable(absolute_path, selected_item_name)) {
+        SaveSettings();
 
-          int status = 0;
-          char buf[PATH_MAX];
-          strncpy(buf, absolute_path, PATH_MAX);
-          AppendElemToPath(buf, selected_item_name);
+        int status = 0;
+        char buf[PATH_MAX];
+        strncpy(buf, absolute_path, PATH_MAX);
+        AppendElemToPath(buf, selected_item_name);
 
-          int child_pid = fork();
-          if (child_pid == -1) {
-            perror("error fork");
-            exit(EXIT_FAILURE);
-          }
-          if (!child_pid) {
-            execl(buf, "", NULL);
-          }
-          if (wait(&status) == -1) {
-            exit(EXIT_FAILURE);
-          }
-
-          RestoreSettings();
+        int child_pid = fork();
+        if (child_pid == -1) {
+          perror("error fork");
+          exit(EXIT_FAILURE);
         }
-        break;
-    }
+        if (!child_pid) {
+          execl(buf, "", NULL);
+        }
+        if (wait(&status) == -1) {
+          exit(EXIT_FAILURE);
+        }
+
+        RestoreSettings();
+      }
+      break;
   }
 }
 
@@ -261,8 +261,7 @@ static void ChangeSelectedItem(DirectoryContext *dir_context, int action) {
   }
   if (dir_context->selected_item < 0) {
     dir_context->selected_item = dir_context->dir_list_size - 1;
-  }
-  else if (dir_context->selected_item > dir_context->dir_list_size - 1) {
+  } else if (dir_context->selected_item > dir_context->dir_list_size - 1) {
     dir_context->selected_item = 0;
   }
 }
