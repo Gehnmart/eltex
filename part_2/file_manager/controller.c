@@ -32,6 +32,9 @@ void InitGlobalController(WindowController *controller) {
  */
 void FreeDirList(DirectoryContext *dir_context) {
   if (dir_context != NULL) {
+    for(int i = 0; i < dir_context->dir_list_size; i++){
+      free(dir_context->dir_list[i]);
+    }
     free(dir_context->dir_list);
   }
 }
