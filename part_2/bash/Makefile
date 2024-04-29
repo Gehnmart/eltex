@@ -1,6 +1,6 @@
 TARGET = mbash
 CC = gcc
-CFLAGS = -g
+CFLAGS = -g -Wall -Werror -Wextra
 LIBS = -lncurses
 
 SRCS = $(wildcard *.c)
