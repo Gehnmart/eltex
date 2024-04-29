@@ -1,6 +1,7 @@
 TARGET = shop_sim
 CC = gcc
-CFLAGS = -g 
+CFLAGS = -g
+PREPROCESSOR = 
 LIBS = -lpthread
 
 SRCS = $(wildcard *.c)
@@ -12,7 +13,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ $(LIBS) -o $(TARGET)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< $(PREPROCESSOR)
 
 clean:
 	rm -f $(TARGET)
