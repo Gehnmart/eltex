@@ -1,7 +1,7 @@
 TARGET = mbash
 CC = gcc
 CFLAGS = -g -Wall -Werror -Wextra
-LIBS = -lncurses
+LIBS = 
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
