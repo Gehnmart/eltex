@@ -27,7 +27,7 @@ int main() {
   mq_receive(mqd, buf, BUF_MAX, &prior);
   printf("%s", buf);
 
-  mq_send(mqd, "Hello!", 7, prior);
+  mq_send(mqd, "Hello!", 7, 2);
 
   mq_close(mqd);
   mq_unlink("/my_queue");

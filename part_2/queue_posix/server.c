@@ -13,7 +13,7 @@
 int main() {
   int msqid;
   mqd_t mqd;
-  unsigned int prior = 1;
+  unsigned int prior = 2;
 
   struct mq_attr attr = {0, 10, BUF_MAX, 0};
 
@@ -23,7 +23,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
   
-  mq_send(mqd, "Hi!", 4, prior);
+  mq_send(mqd, "Hi!", 4, 1);
 
   char buf[BUF_MAX] = {0};
   mq_receive(mqd, buf, BUF_MAX, &prior);

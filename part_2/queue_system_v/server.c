@@ -31,7 +31,7 @@ int main() {
   msgsnd(msqid, &msgs, sizeof(msgs), 0);
 
   Message msgr;
-  msgrcv(msqid, &msgr, sizeof(msgr), 1, 0);
+  msgrcv(msqid, &msgr, sizeof(msgr), 2, 0);
   printf("%s\n", msgr.mtext);
 
   msgctl(msqid, IPC_RMID, NULL);
