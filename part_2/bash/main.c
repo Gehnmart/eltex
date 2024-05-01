@@ -6,15 +6,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define BUF_MAX  4096
-#define ARGV_MAX 128
-#define ARG_LEN_MAX 128
+#define BUF_MAX 1024
+#define ARG_LEN_MAX 256
+#define ARGV_MAX 32
 #define EXEC_MAX 16
 
 typedef struct {
-  int  argv_len;
-  char path[PATH_MAX];
-  char argv[ARGV_MAX][ARG_LEN_MAX];
+  int argv_len;
+  char path[BUF_MAX];
+  char *argv[ARGV_MAX];
 } Executable;
 
 typedef struct {
@@ -22,99 +22,101 @@ typedef struct {
   Executable exec_list[EXEC_MAX];
 } Transporter;
 
-void TokenizeArgv(Executable *executable, char *str) {
+int TokenizeArgv(Executable *executable, char *str) {
   char *save;
   char *ptr = strtok_r(str, " ", &save);
-  do {
-    strncpy(executable->argv[executable->argv_len++], ptr, ARG_LEN_MAX);
-  } while ((ptr = strtok_r(NULL, " ", &save)) != NULL);
+  while (ptr != NULL) {
+    if (executable->argv_len < ARGV_MAX) {
+      executable->argv[executable->argv_len++] = ptr;
+    } else {
+      fprintf(stderr, "argv overflow\n");
+      return -1;
+    }
+    ptr = strtok_r(NULL, " ", &save);
+  }
+  executable->argv[executable->argv_len] = NULL;
   strncpy(executable->path, executable->argv[0], ARG_LEN_MAX);
+  executable->path[ARG_LEN_MAX - 1] = '\0';
+  return 0;
 }
 
-void TokenizePipeline(Transporter *transporter, char *pipeline) {
-  char *save;
+int TokenizePipeline(Transporter *transporter, char *pipeline) {
+  char *save = NULL;
   char *ptr = strtok_r(pipeline, "|", &save);
-  do {
-    TokenizeArgv(&(transporter->exec_list[transporter->exec_len++]), ptr);
-  } while ((ptr = strtok_r(NULL, "|", &save)) != NULL);
+  while (ptr != NULL) {
+    char err =
+        TokenizeArgv(&(transporter->exec_list[transporter->exec_len++]), ptr);
+    if (err == -1) {
+      return -1;
+    }
+    ptr = strtok_r(NULL, "|", &save);
+  }
+  return 0;
 }
 
 void TransporterExec(Transporter *transporter) {
   pid_t cpid;
+  int prev = -1, pipefd[2];
 
-  if(transporter->exec_len > 1) {
-    int pipefd1[2];
-    int pipefd2[2];
-    if (pipe(pipefd1) == -1) {
+  for (int i = 0; i < transporter->exec_len; ++i) {
+    if (pipe(pipefd) == -1) {
       perror("pipe");
       exit(EXIT_FAILURE);
     }
-    if (pipe(pipefd2) == -1) {
-      perror("pipe");
+    cpid = fork();
+    if (cpid == -1) {
+      perror("fork");
       exit(EXIT_FAILURE);
     }
-    for(int i = 0; i < transporter->exec_len; ++i) {
-      printf("Test\n");
-      cpid = fork();
-      if (cpid == -1) {
-        perror("fork");
-        exit(EXIT_FAILURE);
-      }
-      if(cpid == 0){
-        if (i == 0) {
-          dup2(pipefd1[STDOUT_FILENO], STDOUT_FILENO);
-        } else if(i % 2 == 0){
-          if(i == transporter->exec_len - 1){
-            dup2(pipefd2[STDIN_FILENO], STDIN_FILENO);
-          } else {
-            dup2(pipefd2[STDIN_FILENO], STDIN_FILENO);
-            dup2(pipefd1[STDOUT_FILENO], STDOUT_FILENO);
-          }
-        } else {
-          if(i == transporter->exec_len - 1){
-            dup2(pipefd1[STDIN_FILENO], STDIN_FILENO);
-          } else {
-            dup2(pipefd1[STDIN_FILENO], STDIN_FILENO);
-            dup2(pipefd2[STDOUT_FILENO], STDOUT_FILENO);
-          }
-        }
 
-        char *temp_argv[ARGV_MAX];
-        for(int k = 0; k < transporter->exec_list[i].argv_len; k++){
-          temp_argv[k] = transporter->exec_list[i].argv[k];
-        }
-        temp_argv[transporter->exec_list[i].argv_len] = NULL;
-
-        execv(transporter->exec_list[i].path, temp_argv);
-        perror("execv");
-        exit(EXIT_FAILURE);
-      } else {
-        wait(NULL);
+    if (cpid == 0) {
+      if (i < transporter->exec_len - 1) {
+        dup2(pipefd[1], STDOUT_FILENO);
       }
+      if (i > 0) {
+        dup2(prev, STDIN_FILENO);
+      }
+
+      execv(transporter->exec_list[i].path, transporter->exec_list[i].argv);
+      perror("execv");
+      exit(EXIT_FAILURE);
+    } else {
+      wait(NULL);
+      if (prev >= 0) {
+        close(prev);
+      }
+      prev = pipefd[0];
+      close(pipefd[1]);
     }
   }
-
-  // for(int i = 0; i < transporter->exec_len; ++i){
-  //   printf("%s\n", transporter->exec_list[i].path);
-  //   for(int j = 0; j < transporter->exec_list[i].argv_len; j++){
-  //     printf(" %s", transporter->exec_list[i].argv[j]);
-  //   }
-  //   printf("\n");
-  // }
+  if (prev >= 0) {
+    close(prev);
+  }
 }
 
 int main() {
   Transporter transporter = {0};
   char buf[BUF_MAX];
+  char err = 0;
   while (1) {
-    fgets(buf, BUF_MAX, stdin);
+    if (fgets(buf, BUF_MAX, stdin) == NULL) {
+      perror("fgets error\n");
+      exit(EXIT_FAILURE);
+    }
     buf[strlen(buf) - 1] = '\0';
+    if (strlen(buf) <= 1) {
+      continue;
+    }
 
-    if (strcmp(buf, "exit") == 0) {
+    if (buf[0] == 'e' && strncmp(buf, "exit", 4) == 0) {
       exit(EXIT_SUCCESS);
     }
 
-    TokenizePipeline(&transporter, buf);
-    TransporterExec(&transporter);
+    err = TokenizePipeline(&transporter, buf);
+    if (err != -1) {
+      TransporterExec(&transporter);
+    }
+    memset(transporter.exec_list, 0, sizeof(transporter.exec_list));
+    transporter.exec_len = 0;
   }
 }
