@@ -1,8 +1,7 @@
-TARGET = shop_sim
+TARGET = client
 CC = gcc
-CFLAGS = -g
-PREPROCESSOR = -D COLOR
-LIBS = -lpthread
+CFLAGS = -g -Werror -Wextra -Wall
+LIBS = -lncurses
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
@@ -13,9 +12,8 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ $(LIBS) -o $(TARGET)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< $(PREPROCESSOR)
+	$(CC) $(CFLAGS) -c $<
 
 clean:
 	rm -f $(TARGET)
 	rm -f *.o
-	rm -f *.txt

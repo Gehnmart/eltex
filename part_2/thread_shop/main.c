@@ -53,30 +53,33 @@ void *ClientBuyer(void *args) {
   int temp = 0;
   while (client->hunger > 0) {
     char shop_is_found = 0;
-    for (int i = 0; i < SHOP_COUNT && client->hunger > 0; i++) {
+    for (int i = 0; i < SHOP_COUNT; i++) {
       if (shops[i].is_busy == SET_FREE && shops[i].product > 0) {
         pthread_mutex_lock(&shops[i].mutex);
         shops[i].is_busy = SET_BUSY;
         temp = shops[i].product;
         shops[i].product = 0;
         client->hunger -= temp;
-        shops[i].is_busy = SET_FREE;
-        pthread_mutex_unlock(&shops[i].mutex);
 
         printf(YEL "INFO  : CLIENT[%d] BUY - %d IN SHOP[%d]\n" STOP, client->id, temp, i);
         printf(YEL "INFO  : CLIENT[%d] CURRENT HUNGER %d\n" STOP,client->id, client->hunger);
         shop_is_found = 1;
-        break;
+        printf(YEL "INFO  : CLIENT[%d] START SLEEP\n" STOP, client->id);
+        sleep(2);
+        printf(YEL "INFO  : CLIENT[%d] STOP SLEEP\n" STOP, client->id);
+
+        shops[i].is_busy = SET_FREE;
+        pthread_mutex_unlock(&shops[i].mutex);
       }
     }
     if(shop_is_found){
       printf(GRN "STATUS: CLIENT[%d] FOUND SUCCESS\n" STOP, client->id);
     } else {
       printf(RED "STATUS: CLIENT[%d] FOUND FAIL\n" STOP, client->id);
+      printf(YEL "INFO  : CLIENT[%d] START SLEEP\n" STOP, client->id);
+      sleep(2);
+      printf(YEL "INFO  : CLIENT[%d] STOP SLEEP\n" STOP, client->id);
     }
-    printf(YEL "INFO  : CLIENT[%d] START SLEEP\n" STOP, client->id);
-    sleep(2);
-    printf(YEL "INFO  : CLIENT[%d] STOP SLEEP\n" STOP, client->id);
   }
   printf(YEL "INFO  : CLIENT[%d] DIED\n" STOP, client->id);
 
@@ -91,22 +94,24 @@ void *Loader(void *args) {
         pthread_mutex_lock(&shops[i].mutex);
         shops[i].is_busy = SET_BUSY;
         shops[i].product += LOAD_COUNT;
-        shops[i].is_busy = SET_FREE;
-        pthread_mutex_unlock(&shops[i].mutex);
         printf(YEL "INFO  : LOADER[0] LOAD IN SHOP[%d] %d PRODUCT\n" STOP, i, LOAD_COUNT);
         printf(YEL "INFO  : LOADER[0] SHOP[%d] CONTAIN %d PRODUCT\n" STOP, i, shops[i].product);
         shop_is_found = 1;
-        break;
+        printf(YEL "INFO  : LOADER[0] START SLEEP\n" STOP);
+        sleep(1);
+        printf(YEL "INFO  : LOADER[0] END   SLEEP\n" STOP);
+        shops[i].is_busy = SET_FREE;
+        pthread_mutex_unlock(&shops[i].mutex);
       }
     }
     if(shop_is_found){
       printf(GRN "STATUS: LOADER[0] FOUND SUCCESS\n" STOP);
     } else {
       printf(RED "STATUS: LOADER[0] FOUND FAIL\n" STOP);
+      printf(YEL "INFO  : LOADER[0] START SLEEP\n" STOP);
+      sleep(1);
+      printf(YEL "INFO  : LOADER[0] END   SLEEP\n" STOP);
     }
-    printf(YEL "INFO  : LOADER[0] START SLEEP\n" STOP);
-    sleep(1);
-    printf(YEL "INFO  : LOADER[0] END   SLEEP\n" STOP);
   }
   printf(YEL "INFO  : LOADER[0] DIED\n" STOP);
 

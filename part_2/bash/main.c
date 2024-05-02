@@ -77,7 +77,7 @@ void TransporterExec(Transporter *transporter) {
         dup2(prev, STDIN_FILENO);
       }
 
-      execv(transporter->exec_list[i].path, transporter->exec_list[i].argv);
+      execvp(transporter->exec_list[i].path, transporter->exec_list[i].argv);
       perror("execv");
       exit(EXIT_FAILURE);
     } else {
