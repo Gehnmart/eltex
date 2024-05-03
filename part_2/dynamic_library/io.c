@@ -40,7 +40,7 @@ static void ExecuteAction(int (*operation)(int, int),
 
 int MenuLibInput(lib_controller_t *controller) {
   while (1) {
-    char user_input[NAME_MAX];
+    char user_input[USERNAME_MAX];
     printf("enter library path for load or enter q for next step\n");
     InputWrap(scanf("%s", user_input), 1, controller);
 

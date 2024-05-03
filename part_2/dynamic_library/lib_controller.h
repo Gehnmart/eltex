@@ -14,14 +14,14 @@
 #define LIB_MAX 64
 
 typedef struct {
-  char name[NAME_MAX];
+  char name[USERNAME_MAX];
   int (*operation)(int, int);
 } func_t;
 
 typedef struct {
   func_t func[FUNC_MAX];
   int size;
-  char name[NAME_MAX];
+  char name[USERNAME_MAX];
   void *handler;
 } lib_t;
 

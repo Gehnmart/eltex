@@ -9,7 +9,7 @@ int LibLoad(lib_controller_t *controller, const char *filename) {
         filename);
     return FAILURE;
   }
-  strncpy(controller->libs[controller->size].name, filename, NAME_MAX - 1);
+  strncpy(controller->libs[controller->size].name, filename, USERNAME_MAX - 1);
   controller->libs[controller->size].handler = library_handler;
   controller->size++;
 
@@ -27,7 +27,7 @@ int FuncLoad(lib_t *library, const char *funcname) {
     return FAILURE;
   }
 
-  strncpy(library->func[library->size].name, funcname, NAME_MAX - 1);
+  strncpy(library->func[library->size].name, funcname, USERNAME_MAX - 1);
   library->func[library->size].operation = func_handler;
   library->size++;
 

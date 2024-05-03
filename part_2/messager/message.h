@@ -5,12 +5,13 @@
 
 typedef struct {
     unsigned id;
-    char user[NAME_MAX];
-    char message[MESSAGE_MAX];
+    char user[USERNAME_MAX];
+    char message[MESSAGE_LEN_MAX];
 } Message;
 
 typedef struct {
-    User user
-} MessageReq;
+    int len;
+    Message messages[MESSAGE_MAX];
+} MessageList;
 
 #endif  // MESSAGER_MESSAGE_H

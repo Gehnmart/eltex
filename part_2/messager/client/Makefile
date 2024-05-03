@@ -1,7 +1,7 @@
 TARGET = client
 CC = gcc
-CFLAGS = -g -Werror -Wextra -Wall
-LIBS = -lncurses
+CFLAGS = -g 
+LIBS = -lrt -lncurses -lpthread
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
