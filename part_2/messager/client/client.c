@@ -43,7 +43,7 @@ void Register(UserCreateReq user_request, UserCreateRes *user_response) {
 
   mq_send(register_mq, (char *)&user_request, BUF_MAX, 0);
 
-  strncpy(request_mq, "/", USERNAME_MAX);
+  strncpy(request_mq, "/r", USERNAME_MAX);
   strncat(request_mq, user_request.name, USERNAME_MAX);
 
   mqd_t mqdes_client = mq_open(request_mq, O_CREAT | O_RDWR, 0666, &attr);
@@ -101,9 +101,10 @@ void LoginWindow(UserCreateRes *user_response) {
 
 void *Updater(void *argv) {
   UserCreateRes *user_response = (UserCreateRes *) argv;
-  mqd_t chat_mq = mq_open(user_response->name, O_RDONLY);
+
+  mqd_t chat_mq = mq_open("/neco", O_RDWR);
   if (chat_mq < 0) {
-    perror("mq_open");
+    perror(user_response->name);
     exit(EXIT_FAILURE);
   }
   while(1) {
@@ -141,7 +142,7 @@ void ChatWindow(UserCreateRes *user_response) {
     wrefresh(input_win);
 
     for(int i = 0; i < g_message_list.len; i++){
-      wmove(chat_win, 1, i + 1);
+      wmove(chat_win, i + 1, 1);
       wprintw(chat_win, "%s: %s",g_message_list.messages[i].user, g_message_list.messages[i].message);
     }
 
@@ -152,14 +153,14 @@ void ChatWindow(UserCreateRes *user_response) {
     wmove(input_win, 1, 1);
     wgetnstr(input_win, msg, USERNAME_MAX - 1);
     curs_set(FALSE);
+    wclear(input_win);
+    getchar();
     wrefresh(input_win);
 
     Message message;
     strncpy(message.message, msg, MESSAGE_LEN_MAX);
     strncpy(message.user , user_response->name, USERNAME_MAX);
     mq_send(chat_mq, (char *)&message, BUF_MAX, 0);
-
-    break;
   }
   delwin(chat_win);
   delwin(user_win);

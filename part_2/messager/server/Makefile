@@ -1,7 +1,7 @@
 TARGET = server
 CC = gcc
 CFLAGS = -g
-LIBS =  -lpthread
+LIBS =  -lpthread -lrt
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)

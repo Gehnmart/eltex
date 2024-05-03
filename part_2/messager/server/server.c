@@ -29,9 +29,8 @@ void MessageUpdater(mqd_t user_mq) {
 
 void *ChatProc(void *argv) {
   UserList *users = (UserList *)argv;
-
-  struct mq_attr attr = {0, USER_MAX * 2, BUF_MAX, 0};
-
+  struct mq_attr attr = {0, 10, BUF_MAX, 0};
+  mq_unlink("/chat");
   mqd_t chat_mq = mq_open("/chat", O_CREAT | O_RDWR, 0666, &attr);
   if (chat_mq < 0) {
     perror("mq_open");
@@ -41,6 +40,7 @@ void *ChatProc(void *argv) {
   while(1) {
     Message message = {0};
     ssize_t msg_len = mq_receive(chat_mq, (char *)&message, BUF_MAX, NULL);
+    printf("%s\n", message.message);
     if (msg_len == -1) {
       perror("mq_receive");
       continue;
@@ -74,6 +74,8 @@ char UserConnect(UserList *list, unsigned id, char *name) {
 
       strncpy(request_mq, "/", USERNAME_MAX);
       strncat(request_mq, name, USERNAME_MAX);
+      printf("%ld\n", strlen(request_mq));
+      mq_unlink(request_mq);
       mqd_t register_mq = mq_open(request_mq, O_CREAT | O_RDWR, 0666, &attr);
       if (register_mq < 0) {
         char errbuf[256];
@@ -84,7 +86,7 @@ char UserConnect(UserList *list, unsigned id, char *name) {
       list->users[i].id = id;
       list->users[i].user_mq = register_mq;
       strncpy(list->users[i].name, request_mq, USERNAME_MAX);
-      printf("/SUCESSFUL CONECTED\n");
+      printf("SUCCESSFUL CONNECTED %s|\n", request_mq);
       return STATUS_OK;
     }
   }
@@ -94,7 +96,7 @@ char UserConnect(UserList *list, unsigned id, char *name) {
 void *RegisterHandler(void *argv) {
   UserList *list = (UserList *)argv;
   struct mq_attr attr = {0, 10, BUF_MAX, 0};
-
+  mq_unlink("/register");
   mqd_t register_mq = mq_open("/register", O_CREAT | O_RDWR, 0666, &attr);
   if (register_mq < 0) {
     perror("mq_open");
@@ -115,7 +117,7 @@ void *RegisterHandler(void *argv) {
 
     user_response.id = AutoIncUsr();
     strncpy(user_response.name, user_request.name, USERNAME_MAX);
-    strncpy(request_mq, "/", USERNAME_MAX);
+    strncpy(request_mq, "/r", USERNAME_MAX);
     strncat(request_mq, user_response.name, USERNAME_MAX);
     mqd_t mqdes_client = mq_open(request_mq, O_WRONLY);
     if (mqdes_client < 0) {
@@ -125,6 +127,8 @@ void *RegisterHandler(void *argv) {
 
     user_response.status =
         UserConnect(list, user_response.id, user_response.name);
+    strncpy(user_response.name, request_mq, USERNAME_MAX);
+    printf("%s\n", user_response.name);
     mq_send(mqdes_client, (char *)&user_response, BUF_MAX, 0);
     mq_close(mqdes_client);
   }
