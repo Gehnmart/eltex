@@ -75,7 +75,7 @@ char UserConnect(UserList *list, unsigned id, char *name) {
       strncpy(request_mq, "/", USERNAME_MAX);
       strncat(request_mq, name, USERNAME_MAX);
       printf("%ld\n", strlen(request_mq));
-      mq_unlink(request_mq);
+
       mqd_t register_mq = mq_open(request_mq, O_CREAT | O_RDWR, 0666, &attr);
       if (register_mq < 0) {
         char errbuf[256];
@@ -117,10 +117,11 @@ void *RegisterHandler(void *argv) {
 
     user_response.id = AutoIncUsr();
     strncpy(user_response.name, user_request.name, USERNAME_MAX);
-    strncpy(request_mq, "/r", USERNAME_MAX);
+    strncpy(request_mq, "/", USERNAME_MAX);
     strncat(request_mq, user_response.name, USERNAME_MAX);
     mqd_t mqdes_client = mq_open(request_mq, O_WRONLY);
     if (mqdes_client < 0) {
+      printf("%s\n", request_mq);
       perror("mq_open");
       continue;
     }

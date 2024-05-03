@@ -2,6 +2,7 @@
 #include <linux/limits.h>
 #include <mqueue.h>
 #include <ncurses.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +12,6 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include "../message.h"
 #include "../user.h"
@@ -43,14 +43,13 @@ void Register(UserCreateReq user_request, UserCreateRes *user_response) {
 
   mq_send(register_mq, (char *)&user_request, BUF_MAX, 0);
 
-  strncpy(request_mq, "/r", USERNAME_MAX);
+  strncpy(request_mq, "/", USERNAME_MAX);
   strncat(request_mq, user_request.name, USERNAME_MAX);
 
   mqd_t mqdes_client = mq_open(request_mq, O_CREAT | O_RDWR, 0666, &attr);
   if (mqdes_client < 0) {
     perror("mq_open");
   }
-
   struct timespec timout;
   clock_gettime(CLOCK_REALTIME, &timout);
   timout.tv_sec += TIMEOUT;
@@ -100,14 +99,14 @@ void LoginWindow(UserCreateRes *user_response) {
 }
 
 void *Updater(void *argv) {
-  UserCreateRes *user_response = (UserCreateRes *) argv;
+  UserCreateRes *user_response = (UserCreateRes *)argv;
 
-  mqd_t chat_mq = mq_open("/neco", O_RDWR);
+  mqd_t chat_mq = mq_open(user_response->name, O_RDWR);
   if (chat_mq < 0) {
     perror(user_response->name);
     exit(EXIT_FAILURE);
   }
-  while(1) {
+  while (1) {
     Message message = {0};
     ssize_t msg_len = mq_receive(chat_mq, (char *)&message, BUF_MAX, NULL);
     if (msg_len == -1) {
@@ -115,10 +114,12 @@ void *Updater(void *argv) {
       continue;
     }
 
-    strncpy(g_message_list.messages[g_message_list.len].message, message.message, MESSAGE_LEN_MAX);
-    strncpy(g_message_list.messages[g_message_list.len].user, message.user, USERNAME_MAX);
+    strncpy(g_message_list.messages[g_message_list.len].message,
+            message.message, MESSAGE_LEN_MAX);
+    strncpy(g_message_list.messages[g_message_list.len].user, message.user,
+            USERNAME_MAX);
     g_message_list.messages[g_message_list.len].id = g_message_list.len;
-    
+
     g_message_list.len++;
   }
 }
@@ -141,9 +142,10 @@ void ChatWindow(UserCreateRes *user_response) {
     wrefresh(user_win);
     wrefresh(input_win);
 
-    for(int i = 0; i < g_message_list.len; i++){
+    for (int i = 0; i < g_message_list.len; i++) {
       wmove(chat_win, i + 1, 1);
-      wprintw(chat_win, "%s: %s",g_message_list.messages[i].user, g_message_list.messages[i].message);
+      wprintw(chat_win, "%s: %s", g_message_list.messages[i].user,
+              g_message_list.messages[i].message);
     }
 
     char msg[MESSAGE_LEN_MAX] = {0};
@@ -154,14 +156,20 @@ void ChatWindow(UserCreateRes *user_response) {
     wgetnstr(input_win, msg, USERNAME_MAX - 1);
     curs_set(FALSE);
     wclear(input_win);
-    getchar();
     wrefresh(input_win);
+
+    if(strncmp(msg, "/exit", MESSAGE_LEN_MAX) == 0){
+      break;
+    }
 
     Message message;
     strncpy(message.message, msg, MESSAGE_LEN_MAX);
-    strncpy(message.user , user_response->name, USERNAME_MAX);
+    strncpy(message.user, user_response->name, USERNAME_MAX);
     mq_send(chat_mq, (char *)&message, BUF_MAX, 0);
   }
+
+  close(chat_mq);
+
   delwin(chat_win);
   delwin(user_win);
   delwin(input_win);
@@ -174,7 +182,7 @@ int main() {
   UserCreateRes user_response;
   LoginWindow(&user_response);
   pthread_create(&updater, NULL, Updater, &user_response);
-  ChatWindow(&user_response);
+  //ChatWindow(&user_response);
   pthread_join(updater, NULL);
 
   endwin();
