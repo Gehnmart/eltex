@@ -37,6 +37,9 @@
 #define BUF_MAX 512
 #define TIMEOUT 4
 
+
+#define MIN(a, b) (a > b ? b : a)
+
 typedef struct {
   unsigned last_receive_msg;
   unsigned id;

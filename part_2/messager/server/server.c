@@ -24,6 +24,28 @@ int AddUser(MessagerController *controller, char *username, mqd_t user_mq) {
   return ret_status;
 }
 
+int DelUser(MessagerController *controller, char *username) {
+  UserList *user_list = controller->user_list;
+  char ret_status = FAILURE;
+  pthread_mutex_lock(&user_list->mutex);
+  for (int i = 0; i < USER_MAX; ++i) {
+    User *user = &user_list->users[i];
+    if (user->name[0] == 0) {
+      continue;
+    }
+    if(strncmp(user->name, username, NAME_MAX - 1) == 0){
+      close(user->user_mq);
+      memset(user->name, 0, sizeof(user->name));
+      user->user_mq = 0;
+      printf("User %s deleted\n", username);
+      break;
+    }
+  }
+  pthread_mutex_unlock(&user_list->mutex);
+
+  return ret_status;
+}
+
 void *RegisterHandler(void *argv) {
   MessagerController *controller = (MessagerController *)argv;
   struct mq_attr attr = {0, 10, BUF_MAX, 0};
@@ -99,8 +121,12 @@ void *MessageHandler(void *argv) {
         perror("Register() mq_receive:");
       }
     }
-    printf("Получил сообщение %s от %s\n", message.message, message.user);
-    AddMessage(controller, &message);
+    if(strncmp(message.message, "/exit", 5) == 0) {
+      DelUser(controller, message.user);
+    } else {
+      printf("Получил сообщение %s от %s\n", message.message, message.user);
+      AddMessage(controller, &message);
+    }
   }
 
   mq_close(chat_mq);
@@ -126,7 +152,6 @@ void *MessageSender(void *argv) {
   UserList *user_list = controller->user_list;
 
   while (g_exit) {
-    usleep(1000);
     for (int i = 0; i < USER_MAX; ++i) {
       User *user = &user_list->users[i];
       if (user->name[0] != 0 && controller->message_list->len > 0) {

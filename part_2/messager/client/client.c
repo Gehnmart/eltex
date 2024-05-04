@@ -7,12 +7,6 @@
 
 char g_exit = 1;
 
-void InitNcurses() {
-  initscr();
-  cbreak();
-  refresh();
-}
-
 int Register(User *user) {
   char status = SUCCESS;
   struct mq_attr attr = {0, 10, BUF_MAX, 0};
@@ -55,7 +49,8 @@ int Register(User *user) {
     strcpy(temp + 1, user->name);
     strcpy(user->name, temp);
     printf("%s\n", user->name);
-    user->user_mq = mq_open(user->name, O_CREAT | O_RDWR, 0666, &attr);
+    user->user_mq =
+        mq_open(user->name, O_CREAT | O_RDWR | O_NONBLOCK, 0666, &attr);
     if (user->user_mq < 0) {
       perror("Register() mq_open2:");
       status = FAILURE;
@@ -64,10 +59,17 @@ int Register(User *user) {
 
     mq_send(register_mq, user->name, strlen(user->name), 0);
 
-    int slen = mq_receive(user->user_mq, &status, BUF_MAX, 0);
-    if (slen < 0) {
-      status = FAILURE;
-    }
+    int receive_stat;
+    do {
+      receive_stat = mq_receive(user->user_mq, &status, BUF_MAX, 0);
+      if (receive_stat < 0) {
+        if (errno == EAGAIN) {
+          usleep(1000);
+        } else {
+          perror("Register() mq_receive:");
+        }
+      }
+    } while (receive_stat < 0);
 
     if (status != SUCCESS) {
       mq_close(user->user_mq);
@@ -90,33 +92,63 @@ int Register(User *user) {
   return status;
 }
 
+void *ChatUpdater(void *argv) {
+  MessagerController *controller = (MessagerController *)argv;
+  int msgprevlen = controller->message_list->len;
+
+  WINDOW *chat_win = controller->chat_win;
+  box(chat_win, 0, 0);
+  while (g_exit) {
+    if (controller->message_list->len > msgprevlen) {
+      msgprevlen = controller->message_list->len;
+
+      pthread_mutex_lock(&controller->message_list->mutex);
+      int start_index =
+          controller->message_list->len < getmaxy(chat_win) - 2
+              ? 0
+              : controller->message_list->len - (getmaxy(chat_win) - 3);
+      int end_index = MIN(controller->message_list->len,
+                          start_index + getmaxy(chat_win) - 2);
+      int curs = 1;
+      for (int i = start_index; i < end_index; i++) {
+        wmove(chat_win, curs++, 1);
+        wprintw(chat_win, "%s: %s", controller->message_list->messages[i].user,
+                controller->message_list->messages[i].message);
+      }
+      pthread_mutex_unlock(&controller->message_list->mutex);
+      wrefresh(chat_win);
+    }
+  }
+
+  return NULL;
+}
+
+int MessageSend(mqd_t chat_mq, char *text, char *username) {
+  Message message = {0};
+  strncpy(message.message, text, MESSAGE_LEN_MAX);
+  strncpy(message.user, username, USERNAME_MAX);
+  mq_send(chat_mq, (char *)&message, BUF_MAX, 0);
+
+  return SUCCESS;
+}
+
 void *ChatWindow(void *argv) {
   MessagerController *controller = (MessagerController *)argv;
 
   mqd_t chat_mq = mq_open(CHAT_MQ, O_WRONLY);
   if (chat_mq < 0) {
     perror("mq_open");
-    exit(EXIT_FAILURE);
+    g_exit = 0;
+    return NULL;
   }
 
-  WINDOW *chat_win = newwin(LINES - 3, COLS - USERNAME_MAX, 0, 0);
-  WINDOW *user_win = newwin(LINES - 3, USERNAME_MAX, 0, COLS - USERNAME_MAX);
-  WINDOW *input_win = newwin(3, COLS, LINES - 3, 0);
+  WINDOW *user_win = controller->user_win;
+  WINDOW *input_win = controller->input_win;
   while (g_exit) {
-    box(chat_win, 0, 0);
     box(user_win, 0, 0);
     box(input_win, 0, 0);
-    wrefresh(chat_win);
     wrefresh(user_win);
     wrefresh(input_win);
-
-    pthread_mutex_lock(&controller->message_list->mutex);
-    for (int i = 0; i < controller->message_list->len; i++) {
-      wmove(chat_win, i + 1, 1);
-      wprintw(chat_win, "%s: %s", controller->message_list->messages[i].user,
-              controller->message_list->messages[i].message);
-    }
-    pthread_mutex_unlock(&controller->message_list->mutex);
 
     char msg[MESSAGE_LEN_MAX] = {0};
     curs_set(TRUE);
@@ -129,33 +161,47 @@ void *ChatWindow(void *argv) {
     wrefresh(input_win);
 
     if (strncmp(msg, "/exit", MESSAGE_LEN_MAX) == 0) {
+      MessageSend(chat_mq, msg, controller->user->name);
+      usleep(1000);
+      g_exit = 0;
       break;
     }
 
-    Message message;
-    strncpy(message.message, msg, MESSAGE_LEN_MAX);
-    strncpy(message.user, controller->user->name, USERNAME_MAX);
-    mq_send(chat_mq, (char *)&message, BUF_MAX, 0);
+    MessageSend(chat_mq, msg, controller->user->name);
+    usleep(100);
   }
 
-  close(chat_mq);
+  mq_close(chat_mq);
+  mq_unlink(controller->user->name);
 
-  delwin(chat_win);
-  delwin(user_win);
-  delwin(input_win);
+  return NULL;
 }
 
 void *MessageReceiver(void *argv) {
   MessagerController *controller = (MessagerController *)argv;
   while (g_exit) {
     Message message;
-    mq_receive(controller->user->user_mq, (char *)&message, BUF_MAX, 0);
+    int receive_stat =
+        mq_receive(controller->user->user_mq, (char *)&message, BUF_MAX, 0);
+    if (receive_stat < 0) {
+      if (errno == EAGAIN) {
+        usleep(1000);
+        continue;
+      } else {
+        perror("Register() mq_receive:");
+      }
+    }
+
     pthread_mutex_lock(&controller->message_list->mutex);
-    memcpy((void *)&controller->message_list->messages[controller->message_list->len], (void *)&message, sizeof(Message));
+    memcpy((void *)&controller->message_list
+               ->messages[controller->message_list->len],
+           (void *)&message, sizeof(Message));
     controller->message_list->len++;
+
     pthread_mutex_unlock(&controller->message_list->mutex);
   }
-  exit(EXIT_SUCCESS);
+
+  return NULL;
 }
 
 int main() {
@@ -168,22 +214,35 @@ int main() {
   pthread_mutex_init(&message_list.mutex, NULL);
 
   pthread_t pt_ui;
-  // pthread_t pt_send;
+  pthread_t pt_send;
   pthread_t pt_receive;
 
-  InitNcurses();
+  initscr();
+  cbreak();
 
   Register(&user);
 
+  WINDOW *user_win = newwin(LINES - 3, USERNAME_MAX, 0, COLS - USERNAME_MAX);
+  WINDOW *input_win = newwin(3, COLS, LINES - 3, 0);
+  WINDOW *chat_win = newwin(LINES - 3, COLS - USERNAME_MAX, 0, 0);
+  controller.chat_win = chat_win;
+  controller.input_win = input_win;
+  controller.user_win = user_win;
+
   pthread_create(&pt_ui, NULL, ChatWindow, &controller);
-  // pthread_create(pt_send, NULL);
+  pthread_create(&pt_send, NULL, ChatUpdater, &controller);
   pthread_create(&pt_receive, NULL, MessageReceiver, &controller);
 
   pthread_join(pt_ui, NULL);
-  // pthread_join(pt_send, NULL);
+  pthread_join(pt_send, NULL);
   pthread_join(pt_receive, NULL);
 
-  getchar();
+  delwin(chat_win);
+  delwin(input_win);
+  delwin(user_win);
+  curs_set(0);
+  refresh();
   endwin();
+
   exit(EXIT_SUCCESS);
 }
