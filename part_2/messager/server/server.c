@@ -32,7 +32,7 @@ int DelUser(MessagerController *controller, char *username) {
     if (user->name[0] == 0) {
       continue;
     }
-    if(strncmp(user->name, username, NAME_MAX - 1) == 0){
+    if (strncmp(user->name, username, NAME_MAX - 1) == 0) {
       close(user->user_mq);
       memset(user->name, 0, sizeof(user->name));
       user->user_mq = 0;
@@ -50,11 +50,11 @@ void *RegisterHandler(void *argv) {
   struct mq_attr attr;
   attr.mq_msgsize = sizeof(Message);
   attr.mq_maxmsg = 10;
-
-  mqd_t register_mq =
-      mq_open(REGISTER_MQ, O_CREAT | O_RDWR | O_NONBLOCK, 0666, &attr);
+  int flags = O_RDWR | O_CREAT | O_NONBLOCK;
+  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+  mqd_t register_mq = mq_open(REGISTER_MQ, flags, mode, &attr);
   if (register_mq < 0) {
-    perror("Register() mq_open1:");
+    perror("mq_open");
     exit(EXIT_FAILURE);
   }
 
@@ -82,8 +82,12 @@ void *RegisterHandler(void *argv) {
     }
   }
 
-  mq_close(register_mq);
-  mq_unlink(REGISTER_MQ);
+  if (mq_close(register_mq) < 0) {
+    perror("mq_close register_mq");
+  }
+  if (mq_unlink(REGISTER_MQ) < 0) {
+    perror("mq_unlink register_mq");
+  }
 
   exit(EXIT_SUCCESS);
 }
@@ -94,7 +98,8 @@ int AddMessage(MessagerController *controller, Message *message) {
   if (message_list->messages[message_list->len].message[0] == 0) {
     strncpy(message_list->messages[message_list->len].message, message->message,
             MESSAGE_LEN_MAX - 1);
-    strncpy(message_list->messages[message_list->len].user, message->user, USERNAME_MAX - 1);
+    strncpy(message_list->messages[message_list->len].user, message->user,
+            USERNAME_MAX - 1);
   }
   message_list->len++;
   pthread_mutex_unlock(&message_list->mutex);
@@ -105,37 +110,47 @@ int AddMessage(MessagerController *controller, Message *message) {
 void *MessageHandler(void *argv) {
   MessagerController *controller = (MessagerController *)argv;
   struct mq_attr attr = {0};
-  attr.mq_maxmsg = 50;
+  attr.mq_maxmsg = 10;
   attr.mq_msgsize = BUF_MAX;
-  mqd_t chat_mq = mq_open(CHAT_MQ, O_CREAT | O_RDWR, 0666, &attr);
+  int flags = O_RDWR | O_CREAT | O_NONBLOCK;
+  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+  mqd_t chat_mq = mq_open(CHAT_MQ, flags, mode, &attr);
   if (chat_mq < 0) {
     perror("mq_open");
-    exit(EXIT_FAILURE);
+  } else {
+    while (g_exit) {
+      Message message;
+      int slen = mq_receive(chat_mq, (char *)&message, BUF_MAX, NULL);
+      if (slen < 0) {
+        if (errno == EAGAIN) {
+          continue;
+        } else {
+          perror("Register() mq_receive:");
+        }
+      }
+      if (strncmp(message.message, "/exit", 5) == 0) {
+        DelUser(controller, message.user);
+        AddMessage(controller, &message);
+      } else {
+        printf("Received message %s from %s\n", message.message, message.user);
+        AddMessage(controller, &message);
+      }
+    }
   }
-  while (g_exit) {
-    Message message;
-    int slen = mq_receive(chat_mq, (char *)&message, BUF_MAX, NULL);
-    if (slen < 0) {
-      perror("Register() mq_receive:");
-    }
-    if(strncmp(message.message, "/exit", 5) == 0) {
-      DelUser(controller, message.user);
-      AddMessage(controller, &message);
-    } else {
-      printf("Получил сообщение %s от %s\n", message.message, message.user);
-      AddMessage(controller, &message);
-    }
+  if (mq_close(chat_mq) < 0) {
+    perror("mq_close chat_mq");
+  }
+  if (mq_unlink(CHAT_MQ) < 0) {
+    perror("mq_unlink chat_mq");
   }
 
-  mq_close(chat_mq);
-  mq_unlink(CHAT_MQ);
-
-  exit(EXIT_SUCCESS);
+  return NULL;
 }
 
 int SendMessagesToUser(MessagerController *controller, User *user) {
   while (user->last_receive_msg < controller->message_list->len) {
-    printf("Message send to %s mq %d\n  %s\n", user->name, user->user_mq, controller->message_list->messages[user->last_receive_msg].message);
+    printf("Message send to %s mq %d\n  %s\n", user->name, user->user_mq,
+           controller->message_list->messages[user->last_receive_msg].message);
     mq_send(user->user_mq,
             (char *)&controller->message_list->messages[user->last_receive_msg],
             sizeof(Message), 0);
@@ -157,7 +172,7 @@ void *MessageSender(void *argv) {
       }
     }
   }
-  
+
   return NULL;
 }
 
