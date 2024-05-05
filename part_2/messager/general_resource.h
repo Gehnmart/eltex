@@ -34,7 +34,7 @@
 #define STATUS_USER_EXIST 2
 #define STATUS_NO_CONECT 3
 
-#define BUF_MAX 512
+#define BUF_MAX 1024
 #define TIMEOUT 4
 
 

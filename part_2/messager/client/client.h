@@ -9,9 +9,7 @@ typedef struct {
   User *user;
   UserList *user_list;
   MessageList *message_list;
-  WINDOW *chat_win;
-  WINDOW *user_win;
-  WINDOW *input_win;
+  pthread_mutex_t ncurses_lock;
 } MessagerController;
 
 #endif  // SERVER_SERVER_H
