@@ -3,7 +3,7 @@
 #include "../general_resource.h"
 
 pthread_mutex_t g_mutex_ncurses = PTHREAD_MUTEX_INITIALIZER;
-int g_stop = 0;
+char g_stop;
 int g_new_user_flag = 1;
 
 int Register(User *user) {
@@ -93,10 +93,6 @@ void *UserReceiver(void *argv) {
       box(user_win, 0, 0);
       wrefresh(user_win);
       pthread_mutex_lock(&g_mutex_ncurses);
-      // int maxy = getmaxy(user_win) - 2;
-      // int list_len = controller->user_list->len;
-      // int start = list_len > maxy ? list_len - maxy : 0;
-      // int end = MIN(list_len, maxy + start);
       int index = 1;
       for (int i = 0; i < USER_MAX; ++i) {
         if (controller->user_list->users[i].name[0] == 0) {

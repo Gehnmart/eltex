@@ -71,13 +71,4 @@ typedef struct {
   Message messages[MESSAGE_MAX];
 } MessageList;
 
-typedef struct {
-  char name[USERNAME_MAX];
-} UserCreateReq;
-
-typedef struct {
-  char status;
-  char name[USERNAME_MAX];
-} UserCreateRes;
-
 #endif  // MESSAGER_GENERAL_RESOURCE_H

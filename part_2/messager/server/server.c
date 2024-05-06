@@ -2,7 +2,7 @@
 
 #include "../general_resource.h"
 
-char g_exit = 1;
+char g_stop;
 
 int AddMessage(MessagerController *controller, Message *message) {
   MessageList *message_list = controller->message_list;
@@ -12,8 +12,8 @@ int AddMessage(MessagerController *controller, Message *message) {
             MESSAGE_LEN_MAX - 1);
     strncpy(message_list->messages[message_list->len].user, message->user,
             USERNAME_MAX - 1);
-    strncpy(message_list->messages[message_list->len].metadata.data_all, message->metadata.data_all,
-    USERNAME_MAX);
+    strncpy(message_list->messages[message_list->len].metadata.data_all,
+            message->metadata.data_all, USERNAME_MAX);
   }
   message_list->len++;
   pthread_mutex_unlock(&message_list->mutex);
@@ -59,6 +59,7 @@ int DelUser(MessagerController *controller, char *username) {
       mq_close(user->user_mq);
       memset(user->name, 0, sizeof(user->name));
       user->user_mq = 0;
+      user->last_receive_msg = 0;
       printf("INFO USER '%s' DELETED\n", username);
       break;
     }
@@ -82,10 +83,11 @@ void *RegisterHandler(void *argv) {
   mqd_t register_mq = mq_open(REGISTER_MQ, flags, mode, &attr);
   if (register_mq < 0) {
     fprintf(stderr, "ERROR LINE-%d mq_open: %s\n", __LINE__, strerror(errno));
-    exit(EXIT_FAILURE);
+    g_stop = 1;
+    return NULL;
   }
 
-  while (g_exit) {
+  while (!g_stop) {
     char username[USERNAME_MAX] = {0};
     int slen = mq_receive(register_mq, (char *)&username, BUF_MAX, NULL);
     if (slen < 0) {
@@ -95,7 +97,7 @@ void *RegisterHandler(void *argv) {
       } else {
         fprintf(stderr, "ERROR LINE-%d mq_receive: %s\n", __LINE__,
                 strerror(errno));
-        g_exit = 1;
+        g_stop = 1;
         break;
       }
     }
@@ -135,7 +137,7 @@ void *MessageHandler(void *argv) {
   if (chat_mq < 0) {
     fprintf(stderr, "ERROR LINE-%d mq_open: %s\n", __LINE__, strerror(errno));
   } else {
-    while (g_exit) {
+    while (!g_stop) {
       Message message = {0};
       int slen = mq_receive(chat_mq, (char *)&message, sizeof(Message), NULL);
       if (slen < 0) {
@@ -144,7 +146,7 @@ void *MessageHandler(void *argv) {
         } else {
           fprintf(stderr, "ERROR LINE-%d mq_receive: %s\n", __LINE__,
                   strerror(errno));
-          g_exit = 1;
+          g_stop = 1;
           break;
         }
       }
@@ -169,7 +171,9 @@ void *MessageHandler(void *argv) {
 
 int SendMessagesToUser(MessagerController *controller, User *user) {
   while (user->last_receive_msg < controller->message_list->len) {
-    printf("INFO MESSAGE '%s' SEND TO '%s'\n", controller->message_list->messages[user->last_receive_msg].text, user->name);
+    printf("INFO MESSAGE '%s' SEND TO '%s'\n",
+           controller->message_list->messages[user->last_receive_msg].text,
+           user->name);
     mq_send(user->user_mq,
             (char *)&controller->message_list->messages[user->last_receive_msg],
             sizeof(Message), 0);
@@ -183,7 +187,7 @@ void *MessageSender(void *argv) {
   MessagerController *controller = (MessagerController *)argv;
   UserList *user_list = controller->user_list;
 
-  while (g_exit) {
+  while (!g_stop) {
     pthread_mutex_lock(&user_list->mutex);
     for (int i = 0; i < USER_MAX; ++i) {
       User *user = &user_list->users[i];
@@ -192,7 +196,7 @@ void *MessageSender(void *argv) {
       }
     }
     pthread_mutex_unlock(&user_list->mutex);
-    usleep(10000);
+    usleep(1000);
   }
 
   return NULL;
@@ -214,7 +218,7 @@ int main() {
   pthread_create(&pt_receiver, NULL, MessageHandler, &controller);
   pthread_create(&pt_sender, NULL, MessageSender, &controller);
   getchar();
-  g_exit = 0;
+  g_stop = 1;
   pthread_join(pt_registration, NULL);
   pthread_join(pt_receiver, NULL);
   pthread_join(pt_sender, NULL);
