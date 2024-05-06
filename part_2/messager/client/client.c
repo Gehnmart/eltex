@@ -4,18 +4,19 @@
 
 pthread_mutex_t g_mutex_ncurses = PTHREAD_MUTEX_INITIALIZER;
 int g_stop = 0;
+int g_new_user_flag = 1;
 
 int Register(User *user) {
   WINDOW *register_win;
   char status = SUCCESS;
   mqd_t register_mq;
-  struct mq_attr attr;
-  attr.mq_msgsize = sizeof(Message);
-  attr.mq_maxmsg = 10;
+  struct mq_attr attr = {0, 10, sizeof(Message), 0};
+  int flags = O_RDWR | O_CREAT | O_NONBLOCK;
+  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
   register_mq = mq_open(REGISTER_MQ, O_WRONLY);
   if (register_mq < 0) {
-    perror("Register() mq_open:");
+    fprintf(stderr, "ERROR LINE-%d mq_open: %s\n", __LINE__, strerror(errno));
     return FAILURE;
   }
   register_win = newwin(3, USERNAME_MAX, LINES / 2, COLS / USERNAME_MAX / 2);
@@ -41,11 +42,9 @@ int Register(User *user) {
     strcpy(temp + 1, user->name);
     strcpy(user->name, temp);
     printf("%s\n", user->name);
-    user->user_mq = mq_open(
-        user->name, O_CREAT | O_RDWR | O_NONBLOCK,
-        S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH, &attr);
+    user->user_mq = mq_open(user->name, flags, mode, &attr);
     if (user->user_mq < 0) {
-      perror("mq_open");
+      fprintf(stderr, "ERROR LINE-%d mq_open: %s\n", __LINE__, strerror(errno));
       status = FAILURE;
       break;
     }
@@ -58,7 +57,8 @@ int Register(User *user) {
       if (bytes < 0) {
         if (errno == EAGAIN) continue;
         status = FAILURE;
-        perror("mq_receive");
+        fprintf(stderr, "ERROR LINE-%d mq_receive: %s\n", __LINE__,
+                strerror(errno));
         break;
       }
     } while (bytes < 0);
@@ -69,7 +69,9 @@ int Register(User *user) {
   delwin(register_win);
   clear();
   refresh();
-  mq_close(register_mq);
+  if (mq_close(register_mq) < 0) {
+    fprintf(stderr, "ERROR LINE-%d mq_close: %s\n", __LINE__, strerror(errno));
+  }
 
   return status;
 }
@@ -82,7 +84,32 @@ void *UserReceiver(void *argv) {
   box(user_win, 0, 0);
   wrefresh(user_win);
   pthread_mutex_unlock(&g_mutex_ncurses);
+
   while (!g_stop) {
+    pthread_mutex_lock(&controller->user_list->mutex);
+    if (g_new_user_flag) {
+      g_new_user_flag = 0;
+      wclear(user_win);
+      box(user_win, 0, 0);
+      wrefresh(user_win);
+      pthread_mutex_lock(&g_mutex_ncurses);
+      // int maxy = getmaxy(user_win) - 2;
+      // int list_len = controller->user_list->len;
+      // int start = list_len > maxy ? list_len - maxy : 0;
+      // int end = MIN(list_len, maxy + start);
+      int index = 1;
+      for (int i = 0; i < USER_MAX; ++i) {
+        if (controller->user_list->users[i].name[0] == 0) {
+          continue;
+        }
+        wmove(user_win, index++, 1);
+        wprintw(user_win, "%s", controller->user_list->users[i].name);
+      }
+      wrefresh(user_win);
+      pthread_mutex_unlock(&g_mutex_ncurses);
+    }
+    pthread_mutex_unlock(&controller->user_list->mutex);
+    usleep(1000);
   }
 
   pthread_mutex_lock(&g_mutex_ncurses);
@@ -90,6 +117,45 @@ void *UserReceiver(void *argv) {
   pthread_mutex_unlock(&g_mutex_ncurses);
 
   return NULL;
+}
+
+int AddUser(MessagerController *controller, char *username) {
+  g_new_user_flag = 1;
+  UserList *user_list = controller->user_list;
+  char ret_status = FAILURE;
+  pthread_mutex_lock(&user_list->mutex);
+  for (int i = 0; i < USER_MAX; ++i) {
+    User *user = &user_list->users[i];
+    if (user->name[0] == 0) {
+      strncpy(user->name, username, USERNAME_MAX - 1);
+      ret_status = SUCCESS;
+      break;
+    }
+  }
+  User *user = &user_list->users[user_list->len];
+  user_list->len++;
+  pthread_mutex_unlock(&user_list->mutex);
+
+  return ret_status;
+}
+
+int DelUser(MessagerController *controller, char *username) {
+  g_new_user_flag = 1;
+  UserList *user_list = controller->user_list;
+  char ret_status = SUCCESS;
+  pthread_mutex_lock(&user_list->mutex);
+  for (int i = 0; i < USER_MAX; ++i) {
+    User *user = &user_list->users[i];
+    if (user->name[0] == 0) continue;
+    if (strncmp(user->name, username, NAME_MAX - 1) == 0) {
+      memset(user->name, 0, sizeof(user->name));
+      break;
+    }
+  }
+  user_list->len--;
+  pthread_mutex_unlock(&user_list->mutex);
+
+  return ret_status;
 }
 
 void *MessageReceiver(void *argv) {
@@ -106,14 +172,24 @@ void *MessageReceiver(void *argv) {
     int byte_read = mq_receive(controller->user->user_mq, (char *)&message,
                                sizeof(Message), NULL);
     if (byte_read < 0) {
-      if (errno == EAGAIN) continue;
-      perror("mq_receive");
+      if (errno == EAGAIN) {
+        usleep(100);
+        continue;
+      }
+      fprintf(stderr, "ERROR LINE-%d mq_receive: %s\n", __LINE__,
+              strerror(errno));
       break;
     }
     memcpy((void *)&controller->message_list
                ->messages[controller->message_list->len],
            (void *)&message, sizeof(Message));
     controller->message_list->len++;
+
+    if (message.metadata.data.type == APPEND_USER) {
+      AddUser(controller, message.metadata.data.username);
+    } else if (message.metadata.data.type == DELETE_USER) {
+      DelUser(controller, message.metadata.data.username);
+    }
 
     pthread_mutex_lock(&g_mutex_ncurses);
     int maxy = getmaxy(chat_win) - 2;
@@ -124,12 +200,11 @@ void *MessageReceiver(void *argv) {
     for (int i = start; i < end; i++) {
       wmove(chat_win, index++, 1);
       wprintw(chat_win, "%s: %s", controller->message_list->messages[i].user,
-              controller->message_list->messages[i].message);
+              controller->message_list->messages[i].text);
     }
     wrefresh(chat_win);
     pthread_mutex_unlock(&g_mutex_ncurses);
   }
-
   pthread_mutex_lock(&g_mutex_ncurses);
   delwin(chat_win);
   pthread_mutex_unlock(&g_mutex_ncurses);
@@ -141,7 +216,7 @@ void *MessageSender(void *argv) {
 
   mqd_t chat_mq = mq_open(CHAT_MQ, O_WRONLY);
   if (chat_mq < 0) {
-    perror("mq_open");
+    fprintf(stderr, "ERROR LINE-%d mq_open: %s\n", __LINE__, strerror(errno));
     g_stop = 1;
     return NULL;
   }
@@ -153,8 +228,8 @@ void *MessageSender(void *argv) {
   pthread_mutex_unlock(&g_mutex_ncurses);
 
   char message_buf[MESSAGE_LEN_MAX] = {0};
-  Message message = {0};
-  strncpy(message.user, controller->user->name, USERNAME_MAX - 1);
+  Message text = {0};
+  strncpy(text.user, controller->user->name, USERNAME_MAX - 1);
   while (!g_stop) {
     pthread_mutex_lock(&g_mutex_ncurses);
     curs_set(TRUE);
@@ -171,21 +246,20 @@ void *MessageSender(void *argv) {
     pthread_mutex_unlock(&g_mutex_ncurses);
 
     if (strncmp(message_buf, "/exit", MESSAGE_LEN_MAX) == 0) {
-      strncpy(message.message, "/exit", 6);
-      mq_send(chat_mq, (char *)&message, sizeof(Message), 0);
+      strncpy(text.text, "/exit", 6);
+      mq_send(chat_mq, (char *)&text, sizeof(Message), 0);
       g_stop = 1;
       break;
     } else {
-      strncpy(message.message, message_buf, MESSAGE_LEN_MAX);
-      mq_send(chat_mq, (char *)&message, sizeof(Message), 0);
+      strncpy(text.text, message_buf, MESSAGE_LEN_MAX);
+      mq_send(chat_mq, (char *)&text, sizeof(Message), 0);
     }
   }
-
   if (mq_close(chat_mq) < 0) {
-    perror("mq_close chat_mq");
+    fprintf(stderr, "ERROR LINE-%d mq_close: %s\n", __LINE__, strerror(errno));
   }
   if (mq_unlink(controller->user->name) < 0) {
-    perror("mq_unlink chat_mq");
+    fprintf(stderr, "ERROR LINE-%d mq_unlink: %s\n", __LINE__, strerror(errno));
   }
   pthread_mutex_lock(&g_mutex_ncurses);
   delwin(input_win);
@@ -220,7 +294,8 @@ int main() {
     pthread_join(message_receiver, NULL);
     pthread_join(user_receiver, NULL);
   }
-
+  pthread_mutex_destroy(&user_list.mutex);
+  pthread_mutex_destroy(&message_list.mutex);
   endwin();
   exit(EXIT_SUCCESS);
 }
