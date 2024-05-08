@@ -1,26 +1,23 @@
 #include "threads.h"
 
-extern pthread_mutex_t g_mutex_ncurses;
-extern char g_stop;
-extern int g_new_user_flag;
-
 void *UserReceiver(void *argv) {
-  MessagerController *controller = (MessagerController *)argv;
+  ClientController *controller = (ClientController *)argv;
 
-  pthread_mutex_lock(&g_mutex_ncurses);
+  pthread_mutex_lock(&controller->ncurses_mutex);
   WINDOW *user_win = newwin(LINES - 3, USERNAME_MAX, 0, COLS - USERNAME_MAX);
   box(user_win, 0, 0);
   wrefresh(user_win);
-  pthread_mutex_unlock(&g_mutex_ncurses);
+  pthread_mutex_unlock(&controller->ncurses_mutex);
 
-  while (!g_stop) {
+  int prev_user_list_len = 0;
+  while (!controller->client_stop) {
     pthread_mutex_lock(&controller->user_list->mutex);
-    if (g_new_user_flag) {
-      g_new_user_flag = 0;
+    if (prev_user_list_len != controller->user_list->len) {
+      prev_user_list_len = controller->user_list->len;
+      pthread_mutex_lock(&controller->ncurses_mutex);
       wclear(user_win);
       box(user_win, 0, 0);
       wrefresh(user_win);
-      pthread_mutex_lock(&g_mutex_ncurses);
       int index = 1;
       for (int i = 0; i < USER_MAX; ++i) {
         if (controller->user_list->users[i].name[0] == 0) {
@@ -30,15 +27,15 @@ void *UserReceiver(void *argv) {
         wprintw(user_win, "%s", controller->user_list->users[i].name);
       }
       wrefresh(user_win);
-      pthread_mutex_unlock(&g_mutex_ncurses);
+      pthread_mutex_unlock(&controller->ncurses_mutex);
     }
     pthread_mutex_unlock(&controller->user_list->mutex);
     usleep(TIMEOUT);
   }
 
-  pthread_mutex_lock(&g_mutex_ncurses);
+  pthread_mutex_lock(&controller->ncurses_mutex);
   delwin(user_win);
-  pthread_mutex_unlock(&g_mutex_ncurses);
+  pthread_mutex_unlock(&controller->ncurses_mutex);
 
   return NULL;
 }

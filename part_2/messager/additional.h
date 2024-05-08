@@ -13,7 +13,6 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
 #define REGISTER_MQ "/register"
@@ -28,14 +27,12 @@
 #define FAILURE 0
 #define SUCCESS 1
 
-#define NOTHING 0
+#define ORDINARY_MESSAGE 0
 #define DELETE_USER 1
 #define APPEND_USER 2
 
 #define BUF_MAX 1024
-#define TIMEOUT 4
-
-#define MIN(a, b) (a > b ? b : a)
+#define TIMEOUT 1000
 
 typedef struct {
   unsigned last_receive_msg;
