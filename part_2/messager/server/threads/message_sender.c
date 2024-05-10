@@ -31,5 +31,5 @@ void *MessageSender(void *argv) {
     pthread_mutex_unlock(&user_list->mutex);
   }
 
-  return NULL;
+  pthread_exit(NULL);
 }

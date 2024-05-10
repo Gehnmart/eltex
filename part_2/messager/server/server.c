@@ -3,15 +3,17 @@
 
 int main() {
   ServerController controller;
+  int err;
 
   pthread_t pt_registration;
   pthread_t pt_receiver;
   pthread_t pt_sender;
 
   ControllerInit(&controller);
-  pthread_create(&pt_registration, NULL, RegisterHandler, &controller);
-  pthread_create(&pt_receiver, NULL, MessageReceiver, &controller);
-  pthread_create(&pt_sender, NULL, MessageSender, &controller);
+
+  err = pthread_create(&pt_registration, NULL, RegisterHandler, &controller);
+  err = pthread_create(&pt_receiver, NULL, MessageReceiver, &controller);
+  err = pthread_create(&pt_sender, NULL, MessageSender, &controller);
 
   char buf[6];
   while(!controller.server_stop){
@@ -24,6 +26,7 @@ int main() {
       controller.server_stop = 1;
     }
   }
+  
   pthread_join(pt_registration, NULL);
   pthread_join(pt_receiver, NULL);
   pthread_join(pt_sender, NULL);

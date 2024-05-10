@@ -54,5 +54,5 @@ void *MessageSender(void *argv) {
   delwin(input_win);
   pthread_mutex_unlock(&controller->ncurses_mutex);
 
-  return NULL;
+  pthread_exit(NULL);
 }

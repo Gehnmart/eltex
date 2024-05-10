@@ -37,5 +37,5 @@ void *UserReceiver(void *argv) {
   delwin(user_win);
   pthread_mutex_unlock(&controller->ncurses_mutex);
 
-  return NULL;
+  pthread_exit(NULL);
 }

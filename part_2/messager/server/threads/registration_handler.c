@@ -51,5 +51,5 @@ void *RegisterHandler(void *argv) {
     fprintf(stderr, "ERROR LINE-%d mq_unlink: %s\n", __LINE__, strerror(errno));
   }
 
-  return NULL;
+  pthread_exit(NULL);
 }

@@ -91,5 +91,5 @@ void *MessageReceiver(void *argv) {
   pthread_mutex_lock(&controller->ncurses_mutex);
   delwin(chat_win);
   pthread_mutex_unlock(&controller->ncurses_mutex);
-  return NULL;
+  pthread_exit(NULL);
 }
