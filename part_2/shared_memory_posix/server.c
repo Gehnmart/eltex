@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <fcntl.h>           /* For O_* constants */
-#include <sys/stat.h>        /* For mode constants */
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <semaphore.h>
 #include <sys/mman.h>
 
