@@ -21,6 +21,9 @@
 #define SEM_CLIENT_NAME   "/sem_client" /*semaphore client posix name*/
 #define SHARED_DATA_NAME  "/shared_data" /*shared data posix name*/
 
+#define STAT_EXIT         1
+#define STAT_JOIN         2
+#define STAT_EXEC         3
 #define FAILURE           0
 #define SUCCESS           1
 #define USER_MAX          16 /*max connected users (defines size user array)*/
@@ -37,6 +40,7 @@
 
 /*user struct maybe neded add new feature*/
 typedef struct {
+  int  status;
   char username[USERNAME_MAX];
 } User;
 
@@ -58,8 +62,9 @@ typedef struct {
 
 /*data which will be located in shared memory*/
 typedef struct {
-  MessageList msg_list;/*list messages*/
-  UserList    usr_list;/*list users*/
+  MessageList msg_list; /*list messages*/
+  UserList    usr_list; /*list users*/
+//  UserList    registration_req; /*pull registration query*/
 } SharedData;
 
 /*struct for server and client controller*/
