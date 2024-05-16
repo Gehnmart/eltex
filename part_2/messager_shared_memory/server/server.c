@@ -15,22 +15,22 @@ void *Server(void *argv) {
       if (user->status == STAT_JOIN) {
         sprintf(msg_buf, "user %s connected\n", user->username);
         strncpy(message.text, msg_buf, MESSAGE_LEN_MAX);
-        sem_wait(ctl->sem_client);
+        sem_wait(ctl->sem_msglist);
         memcpy((void *)&ctl->shared_data->msg_list.list[ctl->shared_data->msg_list.len],
               (void *)&message, sizeof(message));
         user->status = STAT_EXEC;
         ctl->shared_data->msg_list.len++;
-        sem_post(ctl->sem_client);
+        sem_post(ctl->sem_msglist);
         printf("INFO USER '%s' ADDED\n", user->username);
       } else if (user->status == STAT_EXIT) {
         sprintf(msg_buf, "user %s disconnected\n", user->username);
         strncpy(message.text, msg_buf, MESSAGE_LEN_MAX);
-        sem_wait(ctl->sem_client);
+        sem_wait(ctl->sem_msglist);
         memcpy((void *)&ctl->shared_data->msg_list.list[ctl->shared_data->msg_list.len],
               (void *)&message, sizeof(message));
         user->status = STAT_FREE;
         ctl->shared_data->msg_list.len++;
-        sem_post(ctl->sem_client);
+        sem_post(ctl->sem_msglist);
         printf("INFO USER '%s' DELETED\n", user->username);
       }
     }
@@ -58,20 +58,20 @@ int main() {
   if (ctl.shared_data == MAP_FAILED)
     errExit("mmap");
   
-  ctl.sem_server = sem_open(SEM_SERVER_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR, 0);
-  if(ctl.sem_server == SEM_FAILED)
+  ctl.sem_usrlist = sem_open(SEM_SERVER_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR, 0);
+  if(ctl.sem_usrlist == SEM_FAILED)
     errExit("sem_open");
   
-  ctl.sem_client = sem_open(SEM_CLIENT_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR, 0);
-  if(ctl.sem_client == SEM_FAILED)
+  ctl.sem_msglist = sem_open(SEM_CLIENT_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR, 0);
+  if(ctl.sem_msglist == SEM_FAILED)
     errExit("sem_open");
-  sem_post(ctl.sem_client);
+  sem_post(ctl.sem_msglist);
   
   /*running all threads*/
 
   pthread_create(&th_server, NULL, Server, (void *)&ctl);
 
-  getchar(); /*maybe fix... its more comfortable*/
+  getchar(); /*maybe fix... but its more comfortable*/
   ctl.th_stop = 1;
   pthread_join(th_server, NULL);
 
@@ -79,8 +79,8 @@ int main() {
   munmap(ctl.shared_data, sizeof(*ctl.shared_data));
   shm_unlink(SHARED_DATA_NAME);
 
-  sem_close(ctl.sem_server);
-  sem_close(ctl.sem_client);
+  sem_close(ctl.sem_usrlist);
+  sem_close(ctl.sem_msglist);
   sem_unlink(SEM_SERVER_NAME);
   sem_unlink(SEM_CLIENT_NAME);
 

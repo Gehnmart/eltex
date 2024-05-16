@@ -39,9 +39,9 @@ void *MessageReceiver(void *argv) {
       continue;
     else
       prev_msglen = ctl->shared_data->msg_list.len;
-    sem_wait(ctl->sem_client);
+    sem_wait(ctl->sem_msglist);
     UpdateChatWindow(message_win, ctl);
-    sem_post(ctl->sem_client);
+    sem_post(ctl->sem_msglist);
   }
 
   pthread_mutex_lock(&g_ncurses_mutex);

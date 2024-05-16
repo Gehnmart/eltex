@@ -73,8 +73,8 @@ typedef struct {
   int        th_stop; /*stoped all threads and end programm*/
   int        shmfd; /*shared memory id*/
   char       selfname[USERNAME_MAX]; /*selfname server default set 'server', client can choose any name*/
-  sem_t      *sem_server; /*semaphore server*/
-  sem_t      *sem_client; /*semaphore client*/
+  sem_t      *sem_usrlist; /*semaphore server*/
+  sem_t      *sem_msglist; /*semaphore client*/
   SharedData *shared_data; /*shared data locatioin in shared memory and contain MessageList and UserList*/
 } MessagerCtl;
 

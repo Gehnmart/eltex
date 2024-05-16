@@ -12,12 +12,12 @@ void SigWinch(int signo) {
 }
 
 int AddSelf(MessagerCtl *ctl) {
-  sem_wait(ctl->sem_client);
+  sem_wait(ctl->sem_msglist);
   strncpy(ctl->shared_data->usr_list.list[ctl->shared_data->usr_list.len].username,
           ctl->selfname, USERNAME_MAX);
   ctl->shared_data->usr_list.list[ctl->shared_data->usr_list.len].status = STAT_JOIN;
   ctl->shared_data->usr_list.len++;
-  sem_post(ctl->sem_client);
+  sem_post(ctl->sem_msglist);
 }
 
 void ParceArgv(int argc, char **argv, MessagerCtl *ctl) {
@@ -65,11 +65,11 @@ int main(int argc, char **argv) {
   if (ctl.shared_data == MAP_FAILED)
     errExit("mmap");
   
-  ctl.sem_server = sem_open(SEM_SERVER_NAME, O_RDWR);
-  if(ctl.sem_server == SEM_FAILED)
+  ctl.sem_usrlist = sem_open(SEM_SERVER_NAME, O_RDWR);
+  if(ctl.sem_usrlist == SEM_FAILED)
     errExit("sem_open");
-  ctl.sem_client = sem_open(SEM_CLIENT_NAME, O_RDWR);
-  if(ctl.sem_client == SEM_FAILED)
+  ctl.sem_msglist = sem_open(SEM_CLIENT_NAME, O_RDWR);
+  if(ctl.sem_msglist == SEM_FAILED)
     errExit("sem_open");
   
   AddSelf(&ctl);
@@ -90,8 +90,8 @@ int main(int argc, char **argv) {
 
   munmap(ctl.shared_data, sizeof(*ctl.shared_data));
 
-  sem_close(ctl.sem_client);
-  sem_close(ctl.sem_server);
+  sem_close(ctl.sem_msglist);
+  sem_close(ctl.sem_usrlist);
   
   endwin();
   /*exited*/

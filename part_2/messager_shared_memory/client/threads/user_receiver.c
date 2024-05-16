@@ -15,7 +15,7 @@ void *UserReceiver(void *argv) {
 
   while (!ctl->th_stop) {
     usleep(10000);
-    sem_wait(ctl->sem_client);
+    sem_wait(ctl->sem_msglist);
     pthread_mutex_lock(&g_ncurses_mutex);
     wclear(user_win);
     box(user_win, 0, 0);
@@ -31,7 +31,7 @@ void *UserReceiver(void *argv) {
     }
     wrefresh(user_win);
     pthread_mutex_unlock(&g_ncurses_mutex);
-    sem_post(ctl->sem_client);
+    sem_post(ctl->sem_msglist);
   }
 
   pthread_exit(NULL);

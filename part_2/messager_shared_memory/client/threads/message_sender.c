@@ -35,21 +35,21 @@ void *MessageSender(void *argv) {
       for (int i = 0; i < USER_MAX; ++i) {
         User *user = &ctl->shared_data->usr_list.list[i];
         if(user->status == STAT_FREE) continue;
-        sem_wait(ctl->sem_client);
+        sem_wait(ctl->sem_msglist);
         if(strncmp(user->username, ctl->selfname, USERNAME_MAX) == 0){
           user->status = STAT_EXIT;
         }
-        sem_post(ctl->sem_client);
+        sem_post(ctl->sem_msglist);
       }
       ctl->th_stop = 1;
       break;
     } else if (strlen(msg_buf) > 0) {
       strncpy(message.text, msg_buf, MESSAGE_LEN_MAX);
-      sem_wait(ctl->sem_client);
+      sem_wait(ctl->sem_msglist);
       memcpy((void *)&ctl->shared_data->msg_list.list[ctl->shared_data->msg_list.len],
              (void *)&message, sizeof(message));
       ++ctl->shared_data->msg_list.len;
-      sem_post(ctl->sem_client);
+      sem_post(ctl->sem_msglist);
     }
   }
 
