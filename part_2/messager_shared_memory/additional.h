@@ -21,6 +21,7 @@
 #define SEM_CLIENT_NAME   "/sem_client" /*semaphore client posix name*/
 #define SHARED_DATA_NAME  "/shared_data" /*shared data posix name*/
 
+#define STAT_FREE         0
 #define STAT_EXIT         1
 #define STAT_JOIN         2
 #define STAT_EXEC         3

@@ -34,6 +34,7 @@ void *MessageSender(void *argv) {
       strncpy(message.text, "/exit", 6);
       for (int i = 0; i < USER_MAX; ++i) {
         User *user = &ctl->shared_data->usr_list.list[i];
+        if(user->status == STAT_FREE) continue;
         sem_wait(ctl->sem_client);
         if(strncmp(user->username, ctl->selfname, USERNAME_MAX) == 0){
           user->status = STAT_EXIT;

@@ -28,7 +28,7 @@ void *Server(void *argv) {
         sem_wait(ctl->sem_client);
         memcpy((void *)&ctl->shared_data->msg_list.list[ctl->shared_data->msg_list.len],
               (void *)&message, sizeof(message));
-        user->status = 0;
+        user->status = STAT_FREE;
         ctl->shared_data->msg_list.len++;
         sem_post(ctl->sem_client);
         printf("INFO USER '%s' DELETED\n", user->username);
