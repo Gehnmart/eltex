@@ -1,13 +1,14 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/un.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 
-#define SOCK_SERVER "server"
-#define SOCK_CLIENT "client"
+#define PORT 2048
+#define ADDR "127.0.0.1"
 
 #define handle_error(msg) \
   do {                    \
@@ -16,27 +17,16 @@
   } while (0)
 
 int main() {
-  struct sockaddr_un serv, client;
-  int cfd = socket(AF_LOCAL, SOCK_DGRAM, 0);
+  struct sockaddr_in serv, client;
+  int cfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (cfd == -1) handle_error("socket");
 
-  if (0 == access(SOCK_CLIENT, F_OK)) {
-    if (unlink(SOCK_CLIENT)) {
-      handle_error("unlink");
-    }
-  }
-
+  int coking_addr = 0;
+  inet_pton(AF_INET, ADDR, &coking_addr);
   memset(&serv, 0, sizeof(serv));
-  serv.sun_family = AF_LOCAL;
-  strncpy(serv.sun_path, SOCK_SERVER, sizeof(serv.sun_path) - 1);
-
-  memset(&client, 0, sizeof(client));
-  client.sun_family = AF_LOCAL;
-  strncpy(client.sun_path, SOCK_CLIENT, sizeof(client.sun_path));
-
-  if (bind(cfd, (struct sockaddr *)&client, sizeof(client)) == -1) {
-    handle_error("bind");
-  }
+  serv.sin_family = AF_INET;
+  serv.sin_port = htons(PORT);
+  serv.sin_addr.s_addr = coking_addr;
 
   int status = connect(cfd, (struct sockaddr *)&serv, sizeof(serv));
   if (status == -1) handle_error("connect");
@@ -49,6 +39,5 @@ int main() {
   send(cfd, buf, sizeof(buf), 0);
 
   close(cfd);
-  unlink(SOCK_CLIENT);
   exit(EXIT_SUCCESS);
 }

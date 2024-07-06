@@ -1,5 +1,5 @@
-TARGET_1 = inet_tcp_client
-TARGET_2 = inet_tcp_server
+TARGET_1 = inet_udp_client
+TARGET_2 = inet_udp_server
 CC = gcc
 CFLAGS = -g
 LIBS = 

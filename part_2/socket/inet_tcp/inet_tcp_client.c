@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #define SERVER_PORT 2048
+#define ADDR "127.0.0.1"
 
 #define handle_error(msg) \
   do {                    \
@@ -20,15 +21,18 @@ int main() {
   char buf[1024] = {0};
 
   struct sockaddr_in serv;
-
+  
   int sfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sfd == -1)
     handle_error("socket");
 
+  
+  int coking_addr = 0;
+  inet_pton(AF_INET, ADDR, &coking_addr);
   memset(&serv, 0, sizeof(serv));
   serv.sin_family = AF_INET;
   serv.sin_port = htons(SERVER_PORT);
-  serv.sin_addr.s_addr = inet_addr("127.0.0.1");
+  serv.sin_addr.s_addr = coking_addr;
 
   int status = connect(sfd, (struct sockaddr *)&serv, sizeof(serv));
   if (status == -1)

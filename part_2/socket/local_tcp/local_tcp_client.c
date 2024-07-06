@@ -26,7 +26,7 @@ int main() {
 
   memset(&serv, 0, sizeof(serv));
   serv.sun_family = AF_LOCAL;
-  strncpy(serv.sun_path, SOCK_PATH, sizeof(serv.sun_path) - 1);
+  strncpy(serv.sun_path, SOCK_SERVER, sizeof(serv.sun_path) - 1);
 
   int status = connect(sfd, (struct sockaddr *)&serv, sizeof(serv));
   if (status == -1)
