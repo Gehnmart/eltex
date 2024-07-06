@@ -15,16 +15,19 @@
 #define BUF_MAX    50
 #define SERV_PORT  2048
 #define SERV_ADDR  "127.0.0.1"
-#define SERV_COUNT 40
+#define SERV_COUNT 10
 
 typedef struct {
-  int  sfd;
-  int  port;
-  char is_bussy;
+  struct sockaddr_in client;
+  pthread_t          thread;
+  int                sfd;
+  int                port;
+  char               is_bussy;
 }Server;
 
 typedef struct {
-  Server *server_list[SERV_COUNT];
+  Server server_list[SERV_COUNT];
+  int    port;
 }ServerCtl;
 
 #endif  // EX2_GENERAL_H
