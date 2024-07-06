@@ -3,12 +3,10 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/un.h>
 #include <unistd.h>
 
-#define SERVER_PORT 2048
-#define ADDR "127.0.0.1"
+#define SOCK_PATH "my_socket"
 
 #define handle_error(msg) \
   do {                    \
@@ -20,24 +18,18 @@ int main() {
   char message[] = "Hi!\n";
   char buf[1024] = {0};
 
-  struct sockaddr_in serv;
-  
-  int sfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sfd == -1)
-    handle_error("socket");
+  struct sockaddr_un serv;
 
-  
-  int coking_addr = 0;
-  inet_pton(AF_INET, ADDR, &coking_addr);
+  int sfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+  if (sfd == -1) handle_error("socket");
+
   memset(&serv, 0, sizeof(serv));
-  serv.sin_family = AF_INET;
-  serv.sin_port = htons(SERVER_PORT);
-  serv.sin_addr.s_addr = coking_addr;
+  serv.sun_family = AF_LOCAL;
+  strncpy(serv.sun_path, SOCK_SERVER, sizeof(serv.sun_path) - 1);
 
   int status = connect(sfd, (struct sockaddr *)&serv, sizeof(serv));
-  if (status == -1)
-    handle_error("socket");
-  
+  if (status == -1) handle_error("socket");
+
   send(sfd, message, sizeof(message), 0);
   recv(sfd, buf, sizeof(buf) - 1, 0);
   printf("%s\n", buf);

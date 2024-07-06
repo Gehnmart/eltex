@@ -20,8 +20,7 @@ int main() {
   char buf[1024] = {0};
 
   int sfd = socket(AF_LOCAL, SOCK_STREAM, 0);
-  if (sfd == -1)
-    handle_error("socket");
+  if (sfd == -1) handle_error("socket");
 
   memset(&serv, 0, sizeof(serv));
   serv.sun_family = AF_LOCAL;
@@ -30,13 +29,11 @@ int main() {
   if (bind(sfd, (struct sockaddr *)&serv, sizeof(serv)) == -1)
     handle_error("bind");
 
-  if (listen(sfd, 5) == -1)
-    handle_error("listen");
+  if (listen(sfd, 5) == -1) handle_error("listen");
 
   socklen_t client_addr_size = sizeof(client);
   int cfg = accept(sfd, (struct sockaddr *)&client, &client_addr_size);
-  if (cfg == -1)
-    handle_error("accept");
+  if (cfg == -1) handle_error("accept");
 
   recv(cfg, buf, sizeof(buf) - 1, 0);
   printf("%s", buf);

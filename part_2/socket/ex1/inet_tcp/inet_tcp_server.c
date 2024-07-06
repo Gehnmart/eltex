@@ -1,13 +1,13 @@
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 
-#define PORT 2048
+#define SERVER_PORT 2048
 #define ADDR "127.0.0.1"
 
 #define handle_error(msg) \
@@ -17,29 +17,33 @@
   } while (0)
 
 int main() {
-  int sfd = socket(AF_INET, SOCK_DGRAM, 0);
+  struct sockaddr_in serv, client;
+  char message[] = "Hello!\n";
+  char buf[1024] = {0};
+
+  int sfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sfd == -1) handle_error("socket");
 
   int coking_addr = 0;
   inet_pton(AF_INET, ADDR, &coking_addr);
-  struct sockaddr_in serv, client;
   memset(&serv, 0, sizeof(serv));
-  memset(&client, 0, sizeof(client));
   serv.sin_family = AF_INET;
-  serv.sin_port = htons(PORT);
+  serv.sin_port = htons(SERVER_PORT);
   serv.sin_addr.s_addr = coking_addr;
 
   if (bind(sfd, (struct sockaddr *)&serv, sizeof(serv)) == -1)
     handle_error("bind");
 
-  char buf[50] = {0};
-  socklen_t cl_size = sizeof(client);
-  recvfrom(sfd, buf, sizeof(buf), 0, (struct sockaddr *)&client, &cl_size);
-  printf("%s\n", buf);
-  strncpy(buf, "Hello!", sizeof(buf));
-  sendto(sfd, buf, sizeof(buf), 0, (struct sockaddr *)&client, cl_size);
-  recvfrom(sfd, buf, sizeof(buf), 0, (struct sockaddr *)&client, &cl_size);
+  if (listen(sfd, 5) == -1) handle_error("listen");
 
+  socklen_t client_addr_size = sizeof(client);
+  int cfg = accept(sfd, (struct sockaddr *)&client, &client_addr_size);
+  if (cfg == -1) handle_error("accept");
+
+  recv(cfg, buf, sizeof(buf) - 1, 0);
+  printf("%s", buf);
+  send(cfg, message, sizeof(message), 0);
+
+  close(cfg);
   close(sfd);
-  exit(EXIT_SUCCESS);
 }
