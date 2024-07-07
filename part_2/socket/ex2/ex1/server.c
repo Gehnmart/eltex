@@ -22,6 +22,7 @@ int port_inc() {
 }
 
 char *get_time(char *buf) {
+  memset(buf, 0, sizeof(buf));
   time_t rawtime;
   struct tm *timeinfo;
 
