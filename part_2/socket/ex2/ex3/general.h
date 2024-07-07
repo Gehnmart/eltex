@@ -1,0 +1,39 @@
+#ifndef EX2_GENERAL_H
+#define EX2_GENERAL_H
+
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#define BUF_MAX 50
+#define BUF_MAX_Q "49"
+#define SERV_PORT 2048
+#define SERV_ADDR "127.0.0.1"
+#define SERV_COUNT 50
+
+typedef struct Client {
+  struct sockaddr_in client;
+  struct Client *prev;
+  struct Client *next;
+} ClientT;
+
+typedef struct {
+  ClientT *list;
+  pthread_t thread;
+  int sfd;
+  int port;
+} Server;
+
+typedef struct {
+  Server server_list[SERV_COUNT];
+  int port;
+} ServerCtl;
+
+#endif  // EX2_GENERAL_H
