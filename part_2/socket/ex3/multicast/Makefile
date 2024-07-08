@@ -1,7 +1,7 @@
 TARGET_1 = client
 TARGET_2 = server
 CC = gcc
-CFLAGS = -g
+CFLAGS = -g -Wall -Werror -Wextra
 LIBS = 
 
 all: $(TARGET_1) $(TARGET_2)
