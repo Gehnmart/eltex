@@ -18,14 +18,14 @@
   } while (0)
 
 int main() {
-  int sfd;
+  int sfd, err;
   char buf[BUF_MAX];
   struct sockaddr_in endpoint;
   socklen_t endpnt_len = sizeof(endpoint);
 
   sfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sfd == -1) {
-    handle_error("socket error:");
+    handle_error("socket():");
   }
 
   endpoint.sin_family = AF_INET;
@@ -33,7 +33,7 @@ int main() {
   endpoint.sin_addr.s_addr = INADDR_ANY;
 
   if (bind(sfd, (struct sockaddr *)&endpoint, sizeof(endpoint)) == -1) {
-    handle_error("bind error:");
+    handle_error("bind():");
   }
 
   struct ip_mreqn mreq;
@@ -41,10 +41,17 @@ int main() {
   mreq.imr_address.s_addr = htonl(INADDR_ANY);
   mreq.imr_ifindex = 0;
 
-  setsockopt(sfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-
+  err = setsockopt(sfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+  if(err == -1) {
+    handle_error("setsockopt(): IP_ADD_MEMBERSHIP");
+  }
   recvfrom(sfd, buf, sizeof(buf), 0, (struct sockaddr *)&endpoint, &endpnt_len);
-  printf("time - %s\n", buf);
+  printf("time - %s", buf);
+
+  err = setsockopt(sfd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq));
+  if(err == -1) {
+    handle_error("setsockopt(): IP_DROP_MEMBERSHIP");
+  }
 
   close(sfd);
   exit(EXIT_SUCCESS);

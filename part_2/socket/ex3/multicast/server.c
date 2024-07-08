@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #define SERV "224.0.0.1"
 #define PORT 2048
@@ -30,9 +31,10 @@ void GetTime(char *buf, int n) {
   asctime_r(timeinfo, buf);
 }
 
-int main() {
-  int sfd;
+void *ServRoutine(void *argv) {
+  (void)argv;
   char buf[BUF_MAX];
+  int sfd;
   struct sockaddr_in endpoint;
 
   sfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -51,6 +53,23 @@ int main() {
            sizeof(endpoint));
     sleep(1);
   }
+
+  close(sfd);
+  pthread_exit(EXIT_SUCCESS);
+}
+
+int main() {
+  int err = 0;
+  pthread_t serv_thread;
+  
+  err = pthread_create(&serv_thread, NULL, ServRoutine, NULL);
+  if(err == -1){
+    handle_error("pthread_create():");
+  }
+
+  while(getchar() != '0');
+  stop = 1;
+  pthread_join(serv_thread, NULL);
 
   exit(EXIT_SUCCESS);
 }
