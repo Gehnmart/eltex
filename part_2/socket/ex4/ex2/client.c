@@ -47,7 +47,7 @@ int main() {
   inet_pton(AF_INET, ADDR, &serv.sin_addr.s_addr);
 
   while (1) {
-    printf("type your message or type exit:\n");
+    printf("type your message or type exit:\n  ->");
     scanf("%55s", send_buf + sizeof(udph));
     if (strncmp(send_buf + sizeof(udph), "exit", 5) == 0) {
       break;
@@ -59,7 +59,8 @@ int main() {
                &sock_size);
       memcpy(&udph, recv_buf + sizeof(struct iphdr), sizeof(udph));
       if (udph.source == htons(PORT)) {
-        printf("%s\n", recv_buf + (sizeof(udph) + sizeof(struct iphdr)));
+        printf("returned message:\n  ->%s\n",
+               recv_buf + (sizeof(udph) + sizeof(struct iphdr)));
         break;
       }
     }
