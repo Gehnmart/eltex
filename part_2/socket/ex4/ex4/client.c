@@ -54,7 +54,8 @@ int main() {
   char send_buf[BF_LEN] = {0};
   char recv_buf[BF_LEN] = {0};
 
-  if_index = if_nametoindex("enp0s3");
+  if_index = if_nametoindex("enp0s8");
+  printf("%d\n", if_index);
   if(if_index == 0) {
     handle_error("if_nametoindex()");
   }
@@ -87,10 +88,10 @@ int main() {
   struct iphdr *iph = (struct iphdr *)(send_buf + PCT_OFFSET);
   iph->version  = IPVERSION;
   iph->ihl      = 5;
-  iph->tot_len  = sizeof(send_buf);
+  iph->tot_len  = htons(sizeof(send_buf));
   iph->ttl      = MAXTTL;
   iph->protocol = IPPROTO_UDP;
-  iph->saddr    = addr;
+  iph->saddr    = inet_addr("192.168.56.3");
   iph->daddr    = addr;
   iph->check    = GetChecksum(iph);
 
