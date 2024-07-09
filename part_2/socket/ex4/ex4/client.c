@@ -14,7 +14,7 @@
 
 #define PORT       2048
 #define PORT_CL    2049
-#define ADDR       "127.0.0.1"
+#define ADDR       "192.168.56.2"
 
 #define BF_LEN     143
 #define BF_LEN_S   "100"
@@ -70,16 +70,16 @@ int main() {
   pcthdr->ether_shost[0] = 0x08;
   pcthdr->ether_shost[1] = 0x00;
   pcthdr->ether_shost[2] = 0x27;
-  pcthdr->ether_shost[3] = 0x96;
-  pcthdr->ether_shost[4] = 0xca;
-  pcthdr->ether_shost[5] = 0xfe;
+  pcthdr->ether_shost[3] = 0xd1;
+  pcthdr->ether_shost[4] = 0xe9;
+  pcthdr->ether_shost[5] = 0x19;
 
   pcthdr->ether_dhost[0] = 0x08;
   pcthdr->ether_dhost[1] = 0x00;
   pcthdr->ether_dhost[2] = 0x27;
-  pcthdr->ether_dhost[3] = 0x96;
-  pcthdr->ether_dhost[4] = 0xca;
-  pcthdr->ether_dhost[5] = 0xfe;
+  pcthdr->ether_dhost[3] = 0x78;
+  pcthdr->ether_dhost[4] = 0x85;
+  pcthdr->ether_dhost[5] = 0x25;
 
   pcthdr->ether_type = htons(ETH_P_IP);
 
@@ -106,9 +106,9 @@ int main() {
   serv.sll_addr[0] = 0x08;
   serv.sll_addr[1] = 0x00;
   serv.sll_addr[2] = 0x27;
-  serv.sll_addr[3] = 0x96;
-  serv.sll_addr[4] = 0xca;
-  serv.sll_addr[5] = 0xfe;
+  serv.sll_addr[3] = 0x78;
+  serv.sll_addr[4] = 0x85;
+  serv.sll_addr[5] = 0x25;
 
   while (1) {
     printf("type your message or type exit:\n  ->");

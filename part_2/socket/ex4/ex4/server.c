@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #define PORT 2048
-#define ADDR "127.0.0.1"
+#define ADDR "192.168.56.2"
 
 #define handle_error(msg) \
   do {                    \
