@@ -18,8 +18,8 @@
   } while (0)
 
 typedef struct {
-  int stop;
-  int sfd;
+  int                stop;
+  int                sfd;
   struct sockaddr_in addr;
 } ServInfo;
 
@@ -33,8 +33,8 @@ void *ServThread(void *argv) {
   if (bind(serv->sfd, (struct sockaddr *)&serv->addr, sizeof(serv->addr)) == -1)
     handle_error("bind():");
 
-  char recv_buf[64] = {0};
-  char send_buf[64] = {0};
+  char recv_buf[101] = {0};
+  char send_buf[101] = {0};
   socklen_t cl_size = sizeof(client);
 
   while (!stop) {

@@ -1,23 +1,26 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <net/if.h>
+#include <arpa/inet.h>
+#include <linux/if_packet.h>
 #include <net/ethernet.h>
+#include <net/if.h>
+#include <netinet/ether.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <netinet/ether.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <arpa/inet.h>
-#include <linux/if_packet.h>
 #include <unistd.h>
-
 
 #define PORT 2048
 #define PORT_CL 2049
-#define ADDR "192.168.56.2"
+#define DST_ADDR "192.168.56.2"
+#define SRC_ADDR "192.168.56.3"
 #define ETH_INTERFACE "enp0s8"
+
+#define SRC_MAC_ADDR "08:00:27:d1:e9:19"
+#define DST_MAC_ADDR "08:00:27:78:85:25"
 
 #define BF_LEN 143
 #define BF_LEN_S "100"
@@ -50,28 +53,14 @@ short CalculateChecksum(struct iphdr *iph) {
   return ~csum;
 }
 
-void WriteEthHeader(struct ether_header *pcthdr) {
-  pcthdr->ether_shost[0] = 0x08;
-  pcthdr->ether_shost[1] = 0x00;
-  pcthdr->ether_shost[2] = 0x27;
-  pcthdr->ether_shost[3] = 0xd1;
-  pcthdr->ether_shost[4] = 0xe9;
-  pcthdr->ether_shost[5] = 0x19;
-
-  pcthdr->ether_dhost[0] = 0x08;
-  pcthdr->ether_dhost[1] = 0x00;
-  pcthdr->ether_dhost[2] = 0x27;
-  pcthdr->ether_dhost[3] = 0x78;
-  pcthdr->ether_dhost[4] = 0x85;
-  pcthdr->ether_dhost[5] = 0x25;
-
-  pcthdr->ether_type = htons(ETH_P_IP);
-}
-
 int main() {
   int cfd, err, if_index, sock_flag = 1;
   struct sockaddr_ll serv, client;
   socklen_t sock_size = sizeof(serv);
+  struct ether_header *pcthdr;
+  struct iphdr *iph;
+  struct udphdr *udph;
+  struct udphdr *udph_recv;
   char send_buf[BF_LEN] = {0};
   char recv_buf[BF_LEN] = {0};
 
@@ -85,34 +74,31 @@ int main() {
     handle_error("socket():");
   }
 
-  struct ether_header *pcthdr = (struct ether_header *)(send_buf);
-  WriteEthHeader(pcthdr);
+  pcthdr = (struct ether_header *)(send_buf);
+  ether_aton_r(SRC_MAC_ADDR, (struct ether_addr *)pcthdr->ether_shost);
+  ether_aton_r(DST_MAC_ADDR, (struct ether_addr *)pcthdr->ether_dhost);
+  pcthdr->ether_type = htons(ETH_P_IP);
 
-  struct iphdr *iph = (struct iphdr *)(send_buf + ETH_OFFSET);
-  iph->version  = IPVERSION;
-  iph->ihl      = 5;
-  iph->tot_len  = htons(sizeof(send_buf) - ETH_OFFSET);
-  iph->ttl      = MAXTTL;
+  iph = (struct iphdr *)(send_buf + ETH_OFFSET);
+  iph->ihl = 5;
+  iph->ttl = MAXTTL;
+  iph->version = IPVERSION;
   iph->protocol = IPPROTO_UDP;
-  iph->saddr    = inet_addr("192.168.56.3");
-  inet_pton(AF_INET, ADDR, &iph->daddr);
-  iph->check    = CalculateChecksum(iph);
+  inet_pton(AF_INET, SRC_ADDR, &iph->saddr);
+  inet_pton(AF_INET, DST_ADDR, &iph->daddr);
+  iph->tot_len = htons(sizeof(send_buf) - ETH_OFFSET);
+  iph->check = CalculateChecksum(iph);
 
-  struct udphdr *udph = (struct udphdr *)(send_buf + IP_OFFSET + ETH_OFFSET);
-  udph->source = htons(PORT_CL);
+  udph = (struct udphdr *)(send_buf + IP_OFFSET + ETH_OFFSET);
   udph->dest = htons(PORT);
+  udph->source = htons(PORT_CL);
   udph->len = htons(sizeof(send_buf) - IP_OFFSET - ETH_OFFSET);
 
   memset(&serv, 0, sizeof(serv));
+  serv.sll_halen = ETH_ALEN;
   serv.sll_family = AF_PACKET;
   serv.sll_ifindex = if_index;
-  serv.sll_halen = ETH_ALEN;
-  serv.sll_addr[0] = 0x08;
-  serv.sll_addr[1] = 0x00;
-  serv.sll_addr[2] = 0x27;
-  serv.sll_addr[3] = 0x78;
-  serv.sll_addr[4] = 0x85;
-  serv.sll_addr[5] = 0x25;
+  ether_aton_r(DST_MAC_ADDR, (struct ether_addr *)serv.sll_addr);
 
   while (1) {
     printf("type your message or type exit:\n  ->");
@@ -123,10 +109,9 @@ int main() {
     sendto(cfd, &send_buf, sizeof(send_buf), 0, (struct sockaddr *)&serv,
            sock_size);
     while (1) {
-      recvfrom(cfd, &recv_buf, sizeof(recv_buf), 0, (struct sockaddr *)&serv,
+      recvfrom(cfd, &recv_buf, sizeof(recv_buf), 0, (struct sockaddr *)&client,
                &sock_size);
-      struct udphdr *udph_recv =
-          (struct udphdr *)(recv_buf + IP_OFFSET + ETH_OFFSET);
+      udph_recv = (struct udphdr *)(recv_buf + IP_OFFSET + ETH_OFFSET);
       if (udph_recv->source == htons(PORT)) {
         printf("returned message:\n  ->%s\n", recv_buf + OFFSET);
         break;
