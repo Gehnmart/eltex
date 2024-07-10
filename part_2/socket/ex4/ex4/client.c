@@ -13,14 +13,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define PORT 2048
-#define PORT_CL 2049
-#define DST_ADDR "192.168.56.2"
-#define SRC_ADDR "192.168.56.3"
 #define ETH_INTERFACE "enp0s8"
 
 #define SRC_MAC_ADDR "08:00:27:d1:e9:19"
 #define DST_MAC_ADDR "08:00:27:78:85:25"
+#define SRC_ADDR "192.168.56.3"
+#define DST_ADDR "192.168.56.2"
+#define SRC_PORT 2049
+#define DST_PORT 2048
 
 #define BF_LEN 143
 #define BF_LEN_S "100"
@@ -90,8 +90,8 @@ int main() {
   iph->check = CalculateChecksum(iph);
 
   udph = (struct udphdr *)(send_buf + IP_OFFSET + ETH_OFFSET);
-  udph->dest = htons(PORT);
-  udph->source = htons(PORT_CL);
+  udph->dest = htons(DST_PORT);
+  udph->source = htons(SRC_PORT);
   udph->len = htons(sizeof(send_buf) - IP_OFFSET - ETH_OFFSET);
 
   memset(&serv, 0, sizeof(serv));
@@ -112,7 +112,7 @@ int main() {
       recvfrom(cfd, &recv_buf, sizeof(recv_buf), 0, (struct sockaddr *)&client,
                &sock_size);
       udph_recv = (struct udphdr *)(recv_buf + IP_OFFSET + ETH_OFFSET);
-      if (udph_recv->source == htons(PORT)) {
+      if (udph_recv->source == htons(DST_PORT)) {
         printf("returned message:\n  ->%s\n", recv_buf + OFFSET);
         break;
       }
