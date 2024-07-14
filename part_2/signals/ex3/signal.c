@@ -11,8 +11,10 @@ int main() {
   sigemptyset(&set);
   sigaddset(&set, SIGINT);
   sigprocmask(SIG_BLOCK, &set, NULL);
-  sigwait(&set, &sig);
-  printf("Finish\n");
+  while(1) {
+    sigwait(&set, &sig);
+    printf("Ura\n");
+  }
 
   return 0;
 }
