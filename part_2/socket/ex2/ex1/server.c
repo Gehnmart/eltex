@@ -21,7 +21,7 @@ int port_inc() {
   return port;
 }
 
-char *get_time(char *buf) {
+char *GetTime(char *buf) {
   memset(buf, 0, sizeof(buf));
   time_t rawtime;
   struct tm *timeinfo;
@@ -31,7 +31,7 @@ char *get_time(char *buf) {
   return asctime_r(timeinfo, buf);
 }
 
-void server_list_destroy(ServerCtl *server_list) {
+void ServerListDestroy(ServerCtl *server_list) {
   for (int i = 0; i < server_list->len; i++) {
     pthread_join(server_list->threads[i], NULL);
   }
@@ -39,7 +39,7 @@ void server_list_destroy(ServerCtl *server_list) {
   free(server_list->clients);
 }
 
-pthread_t *server_list_add(ServerCtl *server_list, struct sockaddr_in *client) {
+pthread_t *ServerListAdd(ServerCtl *server_list, struct sockaddr_in *client) {
   if (server_list->len == 0) {
     server_list->len = 1;
     server_list->threads =
@@ -96,7 +96,7 @@ void *ChildServer(void *argv) {
   while (!stop) {
     recvfrom(sfd, buf, sizeof(buf), 0, (struct sockaddr *)client, &cl_size);
     if (strncmp(buf, "time", sizeof(buf)) == 0) {
-      get_time(buf);
+      GetTime(buf);
       sendto(sfd, buf, sizeof(buf), 0, (struct sockaddr *)client, cl_size);
     } else if (strncmp(buf, "exit", sizeof(buf)) == 0) {
       break;
@@ -117,7 +117,7 @@ void *ListenServer(void *argv) {
     socklen_t cl_size = sizeof(client);
     recvfrom(server_list->sfd, buf, sizeof(buf), 0, (struct sockaddr *)&client,
              &cl_size);
-    pthread_t *new_thread = server_list_add(server_list, &client);
+    pthread_t *new_thread = ServerListAdd(server_list, &client);
     pthread_create(new_thread, NULL, ChildServer,
                    &server_list->clients[server_list->len - 1]);
   }
@@ -149,7 +149,7 @@ int main() {
   stop = 1;
   sendto(server_list.sfd, "exit", 5, 0, (struct sockaddr *)&serv, sizeof(serv));
   pthread_join(listen_server, NULL);
-  server_list_destroy(&server_list);
+  ServerListDestroy(&server_list);
 
   exit(EXIT_SUCCESS);
 }
