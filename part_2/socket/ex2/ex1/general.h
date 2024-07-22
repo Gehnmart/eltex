@@ -12,14 +12,19 @@
 #include <unistd.h>
 
 #define BUF_MAX 50
-#define PORT 2048
-#define ADDR "127.0.0.1"
+#define PORT_SRV 2048
+#define ADDR_SRV "127.0.0.1"
 
 typedef struct {
-  struct sockaddr_in *clients;
-  pthread_t *threads;
-  int len;
-  int sfd;
+  pthread_t thread;
+  struct sockaddr_in client;
+} Client;
+
+typedef struct {
+  Client    *cl_list;
+  int       len;
+  int       sfd;
+  int       stop;
 } ServerCtl;
 
 #endif  // EX1_GENERAL_H

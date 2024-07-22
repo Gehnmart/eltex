@@ -9,7 +9,7 @@
     exit(EXIT_FAILURE);   \
   } while (0)
 
-int port = PORT;
+int port = PORT_SRV;
 int stop = 0;
 
 pthread_mutex_t port_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -21,135 +21,144 @@ int port_inc() {
   return port;
 }
 
-char *GetTime(char *buf) {
-  memset(buf, 0, sizeof(buf));
+void GetTime(char *buf, int n) {
   time_t rawtime;
   struct tm *timeinfo;
+  memset(buf, 0, n);
 
   time(&rawtime);
   timeinfo = localtime(&rawtime);
-  return asctime_r(timeinfo, buf);
+  asctime_r(timeinfo, buf);
 }
 
-void ServerListDestroy(ServerCtl *server_list) {
-  for (int i = 0; i < server_list->len; i++) {
-    pthread_join(server_list->threads[i], NULL);
+void ServerListDestroy(ServerCtl *ctl) {
+  for (int i = 0; i < ctl->len; i++) {
+    pthread_join(ctl->cl_list[i].thread, NULL);
   }
-  free(server_list->threads);
-  free(server_list->clients);
+  free(ctl->cl_list);
 }
 
-pthread_t *ServerListAdd(ServerCtl *server_list, struct sockaddr_in *client) {
-  if (server_list->len == 0) {
-    server_list->len = 1;
-    server_list->threads =
-        (pthread_t *)calloc(sizeof(pthread_t), server_list->len);
-    server_list->clients = (struct sockaddr_in *)calloc(
-        sizeof(struct sockaddr_in), server_list->len);
-    memcpy(&server_list->clients[server_list->len - 1], client,
-           sizeof(*client));
+int SearchFreePort(int sfd, struct sockaddr_in *serv) {
+  while (!stop) {
+    serv->sin_port = htons(port_inc());
+    if (bind(sfd, (struct sockaddr *)serv, sizeof(*serv)) == -1) {
+      if (errno == EADDRINUSE)
+        continue;
+      else
+        return -1;
+    }
+    return 0;
+  }
+}
+
+pthread_t *ServerListAdd(ServerCtl *ctl, struct sockaddr_in *client) {
+  if (ctl->len == 0) {
+    ctl->cl_list = calloc(sizeof(Client), 1);
+    memcpy(&ctl->cl_list[0].client, client, sizeof(*client));
+    ctl->len = 1;
   } else {
-    server_list->len++;
-    pthread_t *new_threads = (pthread_t *)realloc(
-        server_list->threads, sizeof(pthread_t) * server_list->len);
-    server_list->threads = new_threads;
-    struct sockaddr_in *new_clients = (struct sockaddr_in *)realloc(
-        server_list->clients, sizeof(struct sockaddr_in) * server_list->len);
-    server_list->clients = new_clients;
-    memcpy(&server_list->clients[server_list->len - 1], client,
-           sizeof(*client));
+    ctl->len++;
+    ctl->cl_list = realloc(ctl->cl_list, sizeof(Client) * ctl->len);
+    memcpy(&ctl->cl_list[ctl->len - 1].client, client, sizeof(*client));
   }
 
-  return &server_list->threads[server_list->len - 1];
+  return &ctl->cl_list[ctl->len - 1].thread;
 }
 
 void *ChildServer(void *argv) {
   struct sockaddr_in *client = (struct sockaddr_in *)argv;
-  printf("%s\n", inet_ntoa(client->sin_addr));
-  int sfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sfd == -1) handle_error("socket");
 
-  int coking_addr = 0;
-  inet_pton(AF_INET, ADDR, &coking_addr);
   struct sockaddr_in serv;
-  memset(&serv, 0, sizeof(serv));
-  serv.sin_family = AF_INET;
-  serv.sin_addr.s_addr = coking_addr;
-
-  int new_port = 0;
-  while (!stop) {
-    new_port = port_inc();
-    serv.sin_port = htons(new_port);
-    if (bind(sfd, (struct sockaddr *)&serv, sizeof(serv)) == -1) {
-      if (errno == EADDRINUSE)
-        continue;
-      else
-        handle_error("bind error");
-    }
-    break;
-  }
-
+  int sfd, new_port = 0;
   char buf[BUF_MAX] = {0};
   socklen_t cl_size = sizeof(*client);
+
+  sfd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sfd == -1) {
+    perror("socket(): ChildServer");
+    pthread_exit(NULL);
+  }
+
+  memset(&serv, 0, sizeof(serv));
+  serv.sin_family = AF_INET;
+  inet_pton(AF_INET, ADDR_SRV, &serv.sin_addr.s_addr);
+
+  if (SearchFreePort(sfd, &serv) == -1) {
+    perror("close(): ChildServer");
+    pthread_exit(NULL);
+  }
+
+  printf("CLIENT {addr = %s, port = %d} CONNECTED\n",
+         inet_ntoa(client->sin_addr), ntohs(client->sin_port));
+
   sendto(sfd, &new_port, sizeof(new_port), 0, (struct sockaddr *)client,
          cl_size);
   while (!stop) {
     recvfrom(sfd, buf, sizeof(buf), 0, (struct sockaddr *)client, &cl_size);
     if (strncmp(buf, "time", sizeof(buf)) == 0) {
-      GetTime(buf);
+      GetTime(buf, sizeof(buf));
       sendto(sfd, buf, sizeof(buf), 0, (struct sockaddr *)client, cl_size);
     } else if (strncmp(buf, "exit", sizeof(buf)) == 0) {
       break;
     }
   }
 
-  close(sfd);
-  pthread_exit(EXIT_SUCCESS);
+  if (close(sfd) == -1) {
+    perror("close(): ChildServer");
+  }
+
+  pthread_exit(NULL);
 }
 
 void *ListenServer(void *argv) {
-  ServerCtl *server_list = (ServerCtl *)argv;
+  ServerCtl *ctl = (ServerCtl *)argv;
 
   char buf[BUF_MAX];
+  struct sockaddr_in client;
+  socklen_t cl_size = sizeof(client);
   while (!stop) {
-    struct sockaddr_in client;
-    memset(&client, 0, sizeof(client));
-    socklen_t cl_size = sizeof(client);
-    recvfrom(server_list->sfd, buf, sizeof(buf), 0, (struct sockaddr *)&client,
+    recvfrom(ctl->sfd, buf, sizeof(buf), 0, (struct sockaddr *)&client,
              &cl_size);
-    pthread_t *new_thread = ServerListAdd(server_list, &client);
+    pthread_t *new_thread = ServerListAdd(ctl, &client);
     pthread_create(new_thread, NULL, ChildServer,
-                   &server_list->clients[server_list->len - 1]);
+                   &ctl->cl_list[ctl->len - 1].client);
   }
 
-  close(server_list->sfd);
   pthread_exit(EXIT_SUCCESS);
 }
 
 int main() {
-  ServerCtl server_list = {0};
-  server_list.sfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (server_list.sfd == -1) handle_error("socket");
-  int coking_addr = 0;
-  inet_pton(AF_INET, ADDR, &coking_addr);
+  ServerCtl ctl = {0};
+  pthread_t listen_server;
   struct sockaddr_in serv;
+
+  ctl.sfd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (ctl.sfd == -1) {
+    handle_error("socket():");
+  }
+
   memset(&serv, 0, sizeof(serv));
   serv.sin_family = AF_INET;
   serv.sin_port = htons(port);
-  serv.sin_addr.s_addr = coking_addr;
+  inet_pton(AF_INET, ADDR_SRV, &serv.sin_addr.s_addr);
 
-  if (bind(server_list.sfd, (struct sockaddr *)&serv, sizeof(serv)) == -1)
-    handle_error("bind");
-
-  pthread_t listen_server;
-  pthread_create(&listen_server, NULL, ListenServer, (void *)&server_list);
-  while (1) {
-    if (getchar() == '0') break;
+  if (bind(ctl.sfd, (struct sockaddr *)&serv, sizeof(serv)) == -1) {
+    handle_error("bind():");
   }
-  stop = 1;
-  sendto(server_list.sfd, "exit", 5, 0, (struct sockaddr *)&serv, sizeof(serv));
+
+  pthread_create(&listen_server, NULL, ListenServer, (void *)&ctl);
+  while (!stop) {
+    if (getchar() == '0') {
+      stop = 1;
+      sendto(ctl.sfd, "exit", 5, 0, (struct sockaddr *)&serv, sizeof(serv));
+    }
+  }
   pthread_join(listen_server, NULL);
-  ServerListDestroy(&server_list);
+  ServerListDestroy(&ctl);
+
+  if (close(ctl.sfd) == -1) {
+    handle_error("close():");
+  }
 
   exit(EXIT_SUCCESS);
 }
